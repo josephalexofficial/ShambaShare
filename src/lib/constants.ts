@@ -2,11 +2,12 @@ export const SITE = {
   name: "ShambaShare",
   tagline: "Climate-smart tools, closer than you think.",
   description:
-    "Rent nearby solar pumps, soil kits, and farm equipment — connect instantly by SMS.",
+    "Rent nearby solar pumps, soil kits, and farm equipment online — book dates, track requests, and manage everything in your portal.",
   location: "Eldoret · Uasin Gishu",
 } as const;
 
 export const NAV_LINKS = [
+  { href: "/", label: "Home" },
   { href: "/browse", label: "Find tools" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/impact", label: "Impact" },
@@ -29,9 +30,25 @@ export const USER_ROLES = [
     title: "I do both",
     description: "I rent tools when I need them and share my own when idle.",
   },
+  {
+    value: "admin",
+    title: "I’m an Admin",
+    description: "Monitor users, listings, rentals, and platform impact.",
+  },
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number]["value"];
+
+/** Roles members can choose themselves. Admin is assigned only by operators. */
+export const SELF_SERVICE_ROLES = USER_ROLES.filter(
+  (role) => role.value !== "admin",
+);
+
+export type SelfServiceRole = (typeof SELF_SERVICE_ROLES)[number]["value"];
+
+export function isSelfServiceRole(role: string): role is SelfServiceRole {
+  return SELF_SERVICE_ROLES.some((item) => item.value === role);
+}
 
 export const EQUIPMENT_CATEGORIES = [
   { value: "irrigation", label: "Irrigation" },
@@ -51,12 +68,10 @@ export function canList(role: UserRole | null | undefined) {
   return role === "owner" || role === "both";
 }
 
-export function dashboardPathForRole(role: UserRole) {
-  return `/dashboard?view=${role === "both" ? "both" : role}`;
+export function isAdmin(role: UserRole | null | undefined) {
+  return role === "admin";
 }
 
-export function postAuthPath(role: UserRole) {
-  if (role === "owner") return "/list";
-  if (role === "renter") return "/browse";
-  return "/dashboard";
+export function postAuthPath(_role?: UserRole) {
+  return "/portal/overview";
 }

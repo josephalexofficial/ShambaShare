@@ -44,11 +44,35 @@ export default function EquipmentDetailPage({ params }: Props) {
     item.locationLng,
   );
 
-  const rentHref = !user
-    ? `/join?intent=renter&next=/equipment/${item.id}`
-    : canRent(user.role)
-      ? `/dashboard?request=${item.id}`
-      : "/join?intent=both";
+  const bookPath = `/portal/book/${item.id}`;
+  const authNext = `/auth?next=${encodeURIComponent(bookPath)}`;
+  const joinNext = `/join?intent=renter&next=${encodeURIComponent(bookPath)}`;
+
+  const rentAction = !item.isAvailable
+    ? null
+    : !user
+      ? {
+          label: "Request to rent",
+          href: authNext,
+          hint: "Members sign in to continue. New here? Create an account first.",
+          secondaryHref: joinNext,
+          secondaryLabel: "Create an account",
+        }
+      : canRent(user.role)
+        ? {
+            label: "Request to rent",
+            href: bookPath,
+            hint: "Choose start and return dates, then send the request to the owner.",
+            secondaryHref: null,
+            secondaryLabel: null,
+          }
+        : {
+            label: "Request to rent",
+            href: "/portal/settings",
+            hint: "Your account is Owner-only. Switch to Renter or Both in Settings to request tools.",
+            secondaryHref: null,
+            secondaryLabel: null,
+          };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
@@ -114,22 +138,34 @@ export default function EquipmentDetailPage({ params }: Props) {
           </dl>
 
           <div className="mt-8 space-y-3">
-            {item.isAvailable ? (
-              <ButtonLink href={rentHref} className="w-full">
-                {!user
-                  ? "Join to request rent"
-                  : canRent(user.role)
-                    ? "Request to rent"
-                    : "Switch to Renter/Both to rent"}
-              </ButtonLink>
+            {rentAction ? (
+              <>
+                <ButtonLink href={rentAction.href} className="w-full">
+                  {rentAction.label}
+                </ButtonLink>
+                {rentAction.secondaryHref && rentAction.secondaryLabel ? (
+                  <ButtonLink
+                    href={rentAction.secondaryHref}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    {rentAction.secondaryLabel}
+                  </ButtonLink>
+                ) : null}
+                <p className="text-center text-xs leading-relaxed text-ink-muted">
+                  {rentAction.hint}
+                </p>
+              </>
             ) : (
-              <ButtonLink href="/browse" variant="secondary" className="w-full">
-                Find other tools
-              </ButtonLink>
+              <>
+                <ButtonLink href="/browse" variant="secondary" className="w-full">
+                  Find other tools
+                </ButtonLink>
+                <p className="text-center text-xs leading-relaxed text-ink-muted">
+                  This tool is currently reserved. Browse other nearby options.
+                </p>
+              </>
             )}
-            <p className="text-center text-xs leading-relaxed text-ink-muted">
-              Reserve & pay on delivery. A request notifies the owner by SMS.
-            </p>
           </div>
         </div>
       </div>

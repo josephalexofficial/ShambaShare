@@ -17,7 +17,7 @@ export default function ContactPage() {
       <PageHeader
         eyebrow="Contact"
         title="Let’s build climate-smart access together"
-        description="Questions about ShambaShare, partnerships with cooperatives, or the EldoHub hackathon demo — send a note."
+        description="Questions about ShambaShare, partnerships with cooperatives, or working together in Uasin Gishu — send a note."
       />
 
       <div className="mx-auto mt-12 grid max-w-4xl gap-8 md:grid-cols-[0.9fr_1.1fr]">
@@ -42,7 +42,7 @@ export default function ContactPage() {
               <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-water-700">
                 Coordination
               </span>
-              SMS-first · Pay on delivery
+              Online portal · Pay on delivery
             </li>
           </ul>
         </aside>

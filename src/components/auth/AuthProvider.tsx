@@ -8,7 +8,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { UserRole } from "@/lib/constants";
+import { isSelfServiceRole, type UserRole } from "@/lib/constants";
+import {
+  accountToSession,
+  findLocalAccount,
+  normalizeEmail,
+  upsertLocalAccount,
+  verifyLocalAccount,
+} from "@/lib/auth/local-accounts";
 import {
   clearLocalSession,
   readLocalSession,
@@ -39,10 +46,82 @@ type AuthContextValue = {
   loading: boolean;
   signUp: (input: SignUpInput) => Promise<{ error?: string; user?: SessionUser }>;
   signIn: (input: SignInInput) => Promise<{ error?: string; user?: SessionUser }>;
+  updateProfile: (patch: Partial<SessionUser>) => void;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function saveAccountAndSession(input: {
+  id: string;
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  county: string;
+  role: UserRole;
+  source: SessionUser["source"];
+}) {
+  const account = upsertLocalAccount({
+    id: input.id,
+    email: input.email,
+    password: input.password,
+    fullName: input.fullName,
+    phone: input.phone,
+    county: input.county,
+    role: input.role,
+  });
+  const sessionUser = accountToSession(account, input.source);
+  writeLocalSession(sessionUser);
+  return sessionUser;
+}
+
+async function syncSupabaseSignUp(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  county: string;
+  role: UserRole;
+}): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: input.email,
+      password: input.password,
+      options: {
+        data: {
+          full_name: input.fullName,
+          phone: input.phone,
+          county: input.county,
+          role: input.role,
+        },
+      },
+    });
+
+    if (error) {
+      console.warn("Supabase signup (non-blocking):", error.message);
+      return null;
+    }
+
+    const userId = data.user?.id ?? null;
+    if (userId) {
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: userId,
+        full_name: input.fullName,
+        phone: input.phone,
+        county: input.county,
+        role: input.role,
+      });
+      if (profileError) console.warn(profileError.message);
+    }
+    return userId;
+  } catch (error) {
+    console.warn("Supabase signup failed (non-blocking):", error);
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -55,116 +134,110 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (input: SignUpInput) => {
-    if (isSupabaseConfigured()) {
-      try {
-        const supabase = createBrowserSupabaseClient();
-        const { data, error } = await supabase.auth.signUp({
-          email: input.email,
-          password: input.password,
-        });
+    const email = normalizeEmail(input.email);
+    const password = input.password.trim();
 
-        if (error) return { error: error.message };
-        if (!data.user) return { error: "Could not create account." };
-
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: data.user.id,
-          full_name: input.fullName,
-          phone: input.phone,
-          county: input.county,
-          role: input.role,
-        });
-
-        if (profileError) {
-          // Account may exist even if profile insert fails (e.g. schema not run)
-          console.warn(profileError.message);
-        }
-
-        const sessionUser: SessionUser = {
-          id: data.user.id,
-          email: input.email,
-          fullName: input.fullName,
-          phone: input.phone,
-          county: input.county,
-          role: input.role,
-          source: "supabase",
-        };
-        writeLocalSession(sessionUser);
-        setUser(sessionUser);
-        return { user: sessionUser };
-      } catch (error) {
-        return {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Signup failed. Check Supabase configuration.",
-        };
-      }
+    if (!email || password.length < 6) {
+      return { error: "Enter a valid email and a password of at least 6 characters." };
     }
 
-    const sessionUser: SessionUser = {
-      id: crypto.randomUUID(),
-      email: input.email,
-      fullName: input.fullName,
-      phone: input.phone,
-      county: input.county,
+    // Local-first: account must work even if Supabase email confirmation blocks login.
+    const localId = crypto.randomUUID();
+    const sessionUser = saveAccountAndSession({
+      id: localId,
+      email,
+      password,
+      fullName: input.fullName.trim(),
+      phone: input.phone.trim(),
+      county: input.county.trim() || "Uasin Gishu",
       role: input.role,
       source: "local",
-    };
-    writeLocalSession(sessionUser);
+    });
     setUser(sessionUser);
+
+    const supabaseId = await syncSupabaseSignUp({
+      email,
+      password,
+      fullName: input.fullName.trim(),
+      phone: input.phone.trim(),
+      county: input.county.trim() || "Uasin Gishu",
+      role: input.role,
+    });
+
+    if (supabaseId) {
+      const synced = saveAccountAndSession({
+        id: supabaseId,
+        email,
+        password,
+        fullName: input.fullName.trim(),
+        phone: input.phone.trim(),
+        county: input.county.trim() || "Uasin Gishu",
+        role: input.role,
+        source: "supabase",
+      });
+      setUser(synced);
+      return { user: synced };
+    }
+
     return { user: sessionUser };
   }, []);
 
   const signIn = useCallback(async (input: SignInInput) => {
+    const email = normalizeEmail(input.email);
+    const password = input.password.trim();
+
+    // 1) Local accounts are the source of truth for portal login.
+    const local = verifyLocalAccount(email, password);
+    if (local) {
+      const session = accountToSession(local, "local");
+      writeLocalSession(session);
+      setUser(session);
+      return { user: session };
+    }
+
+    // 2) Optional Supabase fallback (confirmed accounts only).
     if (isSupabaseConfigured()) {
       try {
         const supabase = createBrowserSupabaseClient();
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: input.email,
-          password: input.password,
+          email,
+          password,
         });
 
-        if (error) return { error: error.message };
-        if (!data.user) return { error: "Could not sign in." };
+        if (!error && data.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, phone, county, role")
+            .eq("id", data.user.id)
+            .maybeSingle();
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, phone, county, role")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        const sessionUser: SessionUser = {
-          id: data.user.id,
-          email: input.email,
-          fullName: profile?.full_name ?? data.user.email ?? "ShambaShare user",
-          phone: profile?.phone ?? "",
-          county: profile?.county ?? "Uasin Gishu",
-          role: (profile?.role as UserRole) ?? "both",
-          source: "supabase",
-        };
-        writeLocalSession(sessionUser);
-        setUser(sessionUser);
-        return { user: sessionUser };
+          const sessionUser = saveAccountAndSession({
+            id: data.user.id,
+            email,
+            password,
+            fullName:
+              profile?.full_name ?? data.user.email ?? "ShambaShare user",
+            phone: profile?.phone ?? "",
+            county: profile?.county ?? "Uasin Gishu",
+            role: (profile?.role as UserRole) ?? "both",
+            source: "supabase",
+          });
+          setUser(sessionUser);
+          return { user: sessionUser };
+        }
       } catch (error) {
-        return {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Sign in failed. Check Supabase configuration.",
-        };
+        console.warn(error);
       }
     }
 
-    const existing = readLocalSession();
-    if (!existing || existing.email.toLowerCase() !== input.email.toLowerCase()) {
-      return {
-        error:
-          "No local demo account found for that email. Use Join to create one, or connect Supabase.",
-      };
+    if (findLocalAccount(email)) {
+      return { error: "Wrong password for this email." };
     }
 
-    setUser(existing);
-    return { user: existing };
+    return {
+      error:
+        "No saved account for this email on this device. Open Join and create your account again (same email is fine).",
+    };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -180,9 +253,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback((patch: Partial<SessionUser>) => {
+    setUser((current) => {
+      if (!current) return current;
+
+      let nextRole = patch.role ?? current.role;
+      if (patch.role !== undefined) {
+        if (current.role === "admin") {
+          nextRole = "admin";
+        } else if (!isSelfServiceRole(patch.role)) {
+          nextRole = current.role;
+        } else {
+          nextRole = patch.role;
+        }
+      }
+
+      const next: SessionUser = { ...current, ...patch, role: nextRole };
+      writeLocalSession(next);
+
+      const stored = findLocalAccount(next.email);
+      if (stored) {
+        upsertLocalAccount({
+          ...stored,
+          fullName: next.fullName,
+          phone: next.phone,
+          county: next.county,
+          role: next.role,
+        });
+      }
+
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, signUp, signIn, signOut }),
-    [user, loading, signUp, signIn, signOut],
+    () => ({ user, loading, signUp, signIn, updateProfile, signOut }),
+    [user, loading, signUp, signIn, updateProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

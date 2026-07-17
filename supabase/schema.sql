@@ -8,7 +8,7 @@ create table if not exists public.profiles (
   full_name text not null,
   phone text not null unique,
   county text,
-  role text not null default 'both' check (role in ('renter', 'owner', 'both')),
+  role text not null default 'both' check (role in ('renter', 'owner', 'both', 'admin')),
   created_at timestamptz not null default now()
 );
 

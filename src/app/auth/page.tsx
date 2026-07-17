@@ -4,7 +4,7 @@ import AuthForm from "./AuthForm";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Create a ShambaShare account with email, password, and phone.",
+  description: "Sign in to your ShambaShare portal with email and password.",
 };
 
 export default function AuthPage() {

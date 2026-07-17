@@ -13,8 +13,8 @@ const steps = [
   },
   {
     icon: MessageSquareText,
-    title: "Connect instantly by SMS",
-    text: "A rental request alerts both sides by SMS so they can coordinate pickup and pay on delivery.",
+    title: "Book and manage online",
+    text: "Send a rental request with start and return dates. Both sides track everything in their portal until pickup and pay on delivery.",
   },
 ];
 
@@ -29,8 +29,8 @@ export function HowItWorksPreview() {
           Three steps from idle tools to active resilience
         </h2>
         <p className="mt-4 text-base leading-relaxed text-ink-muted">
-          ShambaShare keeps the flow simple on purpose — discovery and trust
-          first, not complex escrow.
+          ShambaShare keeps the flow simple on purpose — discover, book, and
+          manage online through your portal.
         </p>
       </div>
 

@@ -72,7 +72,7 @@ export default function ListEquipmentPage() {
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-muted">
         List idle solar pumps, soil kits, and farm tools. Set a daily rate and
-        location — renters will reach you by SMS.
+        location — renters request them from their portal.
       </p>
 
       {submitted ? (
@@ -86,8 +86,8 @@ export default function ListEquipmentPage() {
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <ButtonLink href="/browse">Find tools</ButtonLink>
-            <ButtonLink href="/dashboard" variant="secondary">
-              Go to dashboard
+            <ButtonLink href="/portal/overview" variant="secondary">
+              Go to portal
             </ButtonLink>
           </div>
         </div>
