@@ -59,9 +59,7 @@ export default function JoinForm() {
   const initialRole: UserRole =
     intent === "owner" ? "owner" : intent === "renter" ? "renter" : "both";
 
-  const [role, setRole] = useState<UserRole>(
-    initialRole === "admin" ? "both" : initialRole,
-  );
+  const [role, setRole] = useState<UserRole>(initialRole);
   const [step, setStep] = useState<"role" | "details">("role");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
