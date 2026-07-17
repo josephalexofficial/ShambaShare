@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShambaShare — Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --green-950: #0c1f14;
+        --green-900: #143523;
+        --green-800: #1b4d32;
+        --green-700: #216b42;
+        --water-700: #1a5f73;
+        --cream: #f3f6f0;
+        --ink: #122018;
+        --muted: #3d5246;
+        --line: rgba(18, 32, 24, 0.12);
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0a1510;
+        color: var(--ink);
+        font-family: "DM Sans", system-ui, sans-serif;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        background: rgba(12, 31, 20, 0.95);
+        color: #e8f2ea;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .toolbar p {
+        margin: 0;
+        font-size: 0.875rem;
+        opacity: 0.9;
+      }
+
+      .toolbar button {
+        border: 0;
+        border-radius: 0.65rem;
+        background: #34a05f;
+        color: white;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.65rem 1rem;
+        cursor: pointer;
+      }
+
+      .toolbar button.secondary {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+
+      .deck {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        align-items: center;
+      }
+
+      .slide {
+        width: min(100%, 1100px);
+        aspect-ratio: 16 / 9;
+        border-radius: 1rem;
+        overflow: hidden;
+        position: relative;
+        background-color: #f3f6f0;
+        background: #f3f6f0;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+        page-break-after: always;
+        break-after: page;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      .slide-inner {
+        height: 100%;
+        padding: 2.4rem 2.6rem;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--water-700);
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Fraunces", Georgia, serif;
+        margin: 0;
+        letter-spacing: -0.02em;
+        color: var(--green-950);
+      }
+
+      h1 {
+        font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: clamp(1.7rem, 3.2vw, 2.35rem);
+        line-height: 1.15;
+        margin-top: 0.45rem;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .lead {
+        font-size: 1.05rem;
+        max-width: 38rem;
+      }
+
+      .footer-meta {
+        margin-top: auto;
+        padding-top: 1rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      .brand {
+        font-weight: 700;
+        color: var(--green-800);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 1.25rem;
+        margin-top: 1.25rem;
+        flex: 1;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.9rem;
+        margin-top: 1.25rem;
+        flex: 1;
+      }
+
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.85rem;
+        margin-top: 1.1rem;
+        flex: 1;
+      }
+
+      .card {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 0.9rem;
+        padding: 1rem 1.1rem;
+      }
+
+      .card strong {
+        display: block;
+        color: var(--green-950);
+        font-size: 0.95rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .card p,
+      .card li {
+        margin: 0;
+        font-size: 0.88rem;
+      }
+
+      .card ol,
+      .card ul {
+        margin: 0.35rem 0 0;
+        padding-left: 1.1rem;
+      }
+
+      .stat {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 0.9rem;
+        padding: 1rem;
+      }
+
+      .stat b {
+        display: block;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 1.7rem;
+        color: var(--green-800);
+        line-height: 1;
+      }
+
+      .stat span {
+        display: block;
+        margin-top: 0.4rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      /* Solid colors print reliably; gradients often get stripped in PDF export */
+      .hero {
+        background-color: #0c1f14 !important;
+        background-image: none !important;
+        background: #0c1f14 !important;
+        color: #ffffff !important;
+      }
+
+      .hero h1,
+      .hero h2,
+      .hero .eyebrow,
+      .hero p,
+      .hero .footer-meta,
+      .hero .brand,
+      .hero strong,
+      .hero a {
+        color: #ffffff !important;
+      }
+
+      .hero .eyebrow {
+        color: #9fd4e4 !important;
+      }
+
+      .hero p {
+        color: #e8f2ea !important;
+      }
+
+      .hero .footer-meta {
+        border-top-color: #2a4a38 !important;
+        color: #c5d6cb !important;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1.1rem;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background-color: #1b4d32 !important;
+        background: #1b4d32 !important;
+        border: 1px solid #2a6b48;
+        color: #ffffff !important;
+      }
+
+      .dark-card {
+        background-color: #143523 !important;
+        background: #143523 !important;
+        border: 1px solid #2a4a38;
+        border-radius: 1rem;
+        padding: 1.1rem 1.2rem;
+      }
+
+      .dark-card strong {
+        color: #ffffff !important;
+      }
+
+      .dark-card p {
+        color: #e8f2ea !important;
+        font-size: 0.9rem;
+        margin: 0.35rem 0 0;
+      }
+
+      .dark-card a {
+        color: #9fd4e4 !important;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+        flex: 1;
+      }
+
+      .step {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 0.9rem;
+        padding: 0.95rem;
+      }
+
+      .step .n {
+        width: 1.7rem;
+        height: 1.7rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--green-800);
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 0.65rem;
+      }
+
+      .step strong {
+        display: block;
+        color: var(--green-950);
+        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .step p {
+        margin: 0;
+        font-size: 0.8rem;
+      }
+
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1.2rem;
+        flex: 1;
+      }
+
+      .compare .bad {
+        background: #fff8f4;
+        border-color: rgba(92, 64, 48, 0.18);
+      }
+
+      .compare .good {
+        background: #edf7f0;
+        border-color: rgba(27, 77, 50, 0.18);
+      }
+
+      .tag {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--green-800);
+        margin-bottom: 0.4rem;
+      }
+
+      .team-note {
+        font-size: 0.85rem;
+        font-style: italic;
+      }
+
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+
+        .toolbar {
+          display: none !important;
+        }
+
+        html,
+        body {
+          background: #ffffff !important;
+        }
+
+        .deck {
+          padding: 0 !important;
+          gap: 0 !important;
+        }
+
+        .slide {
+          width: 100% !important;
+          max-width: none !important;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          aspect-ratio: auto !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          break-after: page;
+          page-break-after: always;
+          background-color: #f3f6f0 !important;
+          background: #f3f6f0 !important;
+        }
+
+        .slide.hero {
+          background-color: #0c1f14 !important;
+          background: #0c1f14 !important;
+        }
+
+        .slide.hero,
+        .slide.hero * {
+          color: #ffffff !important;
+        }
+
+        .slide.hero .eyebrow {
+          color: #9fd4e4 !important;
+        }
+
+        .slide.hero p,
+        .slide.hero .footer-meta {
+          color: #e8f2ea !important;
+        }
+
+        .slide.hero .pill {
+          background-color: #1b4d32 !important;
+          background: #1b4d32 !important;
+          color: #ffffff !important;
+          border-color: #2a6b48 !important;
+        }
+
+        .slide.hero .dark-card {
+          background-color: #143523 !important;
+          background: #143523 !important;
+          border-color: #2a4a38 !important;
+        }
+
+        .slide.hero a {
+          color: #9fd4e4 !important;
+        }
+
+        .card,
+        .stat,
+        .step {
+          background-color: #ffffff !important;
+          background: #ffffff !important;
+        }
+
+        .compare .bad {
+          background-color: #fff8f4 !important;
+          background: #fff8f4 !important;
+        }
+
+        .compare .good,
+        .card[style*="edf7f0"] {
+          background-color: #edf7f0 !important;
+          background: #edf7f0 !important;
+        }
+
+        .step .n {
+          background-color: #1b4d32 !important;
+          background: #1b4d32 !important;
+          color: #ffffff !important;
+        }
+
+        .slide-inner {
+          padding: 1.8rem 2.2rem;
+        }
+      }
+
+      @page {
+        size: landscape;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <p>
+        Export tip: <strong>Ctrl/Cmd + P</strong> → Save as PDF → Landscape → turn
+        ON <strong>Background graphics</strong> (or “Print backgrounds”)
+      </p>
+      <div style="display: flex; gap: 0.5rem">
+        <button class="secondary" type="button" onclick="window.scrollTo({ top: 0 })">
+          Top
+        </button>
+        <button type="button" onclick="window.print()">Export PDF</button>
+      </div>
+    </div>
+
+    <div class="deck">
+      <!-- 1 -->
+      <section class="slide hero">
+        <div class="slide-inner">
+          <p class="eyebrow">Climate Tech for Resilient Communities · 2026</p>
+          <h1 style="margin-top: 1.2rem">ShambaShare</h1>
+          <p class="lead" style="margin-top: 0.9rem; font-size: 1.2rem">
+            Climate-smart farm tools, closer than you think.
+          </p>
+          <p class="lead" style="margin-top: 0.7rem">
+            A peer-to-peer marketplace that helps farmers in Eldoret &amp; Uasin
+            Gishu find, request, and share idle climate-smart equipment —
+            online, with clear booking dates and pay on delivery.
+          </p>
+          <div class="pill-row">
+            <span class="pill">Climate-smart Agriculture</span>
+            <span class="pill">MVP Live</span>
+            <span class="pill">Web Platform</span>
+            <span class="pill">Eldoret · Uasin Gishu</span>
+          </div>
+          <p class="lead" style="margin-top: 1.15rem; font-size: 0.95rem; color: #e8f2ea">
+            Alex Joseph · Founder / Lead Developer
+          </p>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 1 / 10 · Pitch Deck</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">The problem</p>
+          <h2>Adaptation tools exist — access does not</h2>
+          <div class="grid-3">
+            <article class="card">
+              <strong>Climate pressure</strong>
+              <p>
+                Droughts, unreliable rains, and declining soil health increase
+                the need for irrigation, soil testing, and conservation tools.
+              </p>
+            </article>
+            <article class="card">
+              <strong>High cost of ownership</strong>
+              <p>
+                Solar pumps, soil kits, drip systems, and tillers are expensive
+                for smallholders — yet often sit idle between seasons for owners.
+              </p>
+            </article>
+            <article class="card">
+              <strong>Broken coordination</strong>
+              <p>
+                Informal rentals rely on word of mouth. Farmers struggle to find
+                nearby tools, agree dates, and track requests reliably.
+              </p>
+            </article>
+          </div>
+          <p class="lead" style="margin-top: 1rem; font-size: 0.95rem">
+            Result: climate-smart equipment is underused while neighboring farms
+            miss planting windows, water crops poorly, and lose income.
+          </p>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 2 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">The solution</p>
+          <h2>Share idle tools. Build farm resilience.</h2>
+          <div class="grid-2">
+            <div>
+              <p class="lead">
+                ShambaShare is a portal-first web marketplace for renting and
+                sharing climate-smart farm equipment locally.
+              </p>
+              <div class="grid-4" style="margin-top: 1rem">
+                <article class="card">
+                  <strong>Discover nearby</strong>
+                  <p>Browse tools sorted by distance around Eldoret.</p>
+                </article>
+                <article class="card">
+                  <strong>Book with dates</strong>
+                  <p>Request clear start and return windows online.</p>
+                </article>
+                <article class="card">
+                  <strong>Owner earnings</strong>
+                  <p>List idle assets and earn when neighbors rent.</p>
+                </article>
+                <article class="card">
+                  <strong>Pay on delivery</strong>
+                  <p>Practical trust model for early community adoption.</p>
+                </article>
+              </div>
+            </div>
+            <aside class="card" style="background: #edf7f0">
+              <span class="tag">Focus tools</span>
+              <ul>
+                <li>Solar irrigation pumps</li>
+                <li>Soil testing kits</li>
+                <li>Drip irrigation kits</li>
+                <li>Conservation tillers</li>
+                <li>Moisture / field tools</li>
+              </ul>
+              <p style="margin-top: 0.9rem">
+                Built for <strong>smallholders, women &amp; youth farmers,</strong>
+                cooperatives, and local equipment owners in Uasin Gishu.
+              </p>
+            </aside>
+          </div>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 3 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">How it works</p>
+          <h2>From listing to rental in four steps</h2>
+          <div class="steps">
+            <article class="step">
+              <div class="n">1</div>
+              <strong>Join</strong>
+              <p>Create a Renter, Owner, or Both account with phone contact.</p>
+            </article>
+            <article class="step">
+              <div class="n">2</div>
+              <strong>List or find</strong>
+              <p>Owners publish tools; renters search nearest available gear.</p>
+            </article>
+            <article class="step">
+              <div class="n">3</div>
+              <strong>Request</strong>
+              <p>Pick dates, send a booking request, track status in-portal.</p>
+            </article>
+            <article class="step">
+              <div class="n">4</div>
+              <strong>Pickup &amp; pay</strong>
+              <p>Coordinate handover by phone; pay on delivery; return on date.</p>
+            </article>
+          </div>
+          <p class="lead" style="margin-top: 1rem; font-size: 0.92rem">
+            One portal for both sides: bookings, listings, rental requests,
+            notifications, and settings — not just a public brochure site.
+          </p>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 4 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">Product · MVP</p>
+          <h2>A working platform, not just a concept</h2>
+          <div class="grid-3">
+            <article class="card">
+              <strong>Public site</strong>
+              <ul>
+                <li>Home &amp; impact story</li>
+                <li>Find tools / browse</li>
+                <li>Equipment detail + request</li>
+                <li>Join &amp; sign in</li>
+              </ul>
+            </article>
+            <article class="card">
+              <strong>Renter portal</strong>
+              <ul>
+                <li>Overview &amp; alerts</li>
+                <li>Find &amp; book tools</li>
+                <li>My bookings tracker</li>
+                <li>Notifications (mark read)</li>
+              </ul>
+            </article>
+            <article class="card">
+              <strong>Owner portal</strong>
+              <ul>
+                <li>Add &amp; manage listings</li>
+                <li>Rental requests</li>
+                <li>Income ledger</li>
+                <li>Role-safe settings</li>
+              </ul>
+            </article>
+          </div>
+          <div class="card" style="margin-top: 0.9rem">
+            <strong>Stack</strong>
+            <p>
+              Next.js · TypeScript · Tailwind · Supabase-ready schema · Deployed
+              web MVP · Repo:
+              github.com/josephalexofficial/ShambaShare
+            </p>
+          </div>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 5 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">Why we win</p>
+          <h2>Different from informal &amp; generic marketplaces</h2>
+          <div class="compare">
+            <article class="card bad">
+              <span class="tag" style="color: #5c4030">Status quo</span>
+              <ul>
+                <li>Word-of-mouth rentals</li>
+                <li>WhatsApp / Facebook posts</li>
+                <li>No distance-aware discovery</li>
+                <li>No booking dates or status</li>
+                <li>No owner/renter workspace</li>
+              </ul>
+            </article>
+            <article class="card good">
+              <span class="tag">ShambaShare</span>
+              <ul>
+                <li>Built for climate-smart tools</li>
+                <li>Nearest-first local search</li>
+                <li>Structured booking + notifications</li>
+                <li>Portal for renters &amp; owners</li>
+                <li>Pay-on-delivery, phone for pickup</li>
+              </ul>
+            </article>
+          </div>
+          <p class="lead" style="margin-top: 0.95rem; font-size: 0.92rem">
+            We don’t try to be every marketplace. We make adaptation equipment
+            usable when weather stress hits — locally, simply, and online.
+          </p>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 6 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">Climate impact</p>
+          <h2>More resilient farms through shared access</h2>
+          <div class="grid-2">
+            <div class="grid-4" style="margin-top: 0">
+              <article class="stat">
+                <b>Adapt</b>
+                <span>Timely irrigation &amp; soil tools when seasons shift</span>
+              </article>
+              <article class="stat">
+                <b>Water</b>
+                <span>Better use of pumps &amp; drip kits under scarcity</span>
+              </article>
+              <article class="stat">
+                <b>Soil</b>
+                <span>Wider access to testing &amp; conservation tillage</span>
+              </article>
+              <article class="stat">
+                <b>Solar</b>
+                <span>Higher utilization of renewable irrigation assets</span>
+              </article>
+            </div>
+            <aside class="card">
+              <strong>3-year ambition (Uasin Gishu first)</strong>
+              <ul>
+                <li><strong>5,000</strong> farmers reached</li>
+                <li><strong>2,000</strong> women · <strong>1,500</strong> youth</li>
+                <li><strong>~15%</strong> yield improvement potential</li>
+                <li><strong>~20%</strong> income uplift for active users</li>
+                <li><strong>~25%</strong> lower tool access cost vs buying</li>
+              </ul>
+              <p style="margin-top: 0.75rem">
+                Impact grows as idle climate-smart inventory circulates instead
+                of sitting unused.
+              </p>
+            </aside>
+          </div>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 7 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">Market &amp; business</p>
+          <h2>Who pays, and how we grow</h2>
+          <div class="grid-3">
+            <article class="card">
+              <strong>Customers</strong>
+              <p>
+                <strong>Primary:</strong> smallholder renters needing short-term
+                tools.<br />
+                <strong>Secondary:</strong> owners &amp; agri-vendors monetizing
+                idle equipment.<br />
+                <strong>Later:</strong> cooperatives &amp; climate programs.
+              </p>
+            </article>
+            <article class="card">
+              <strong>Revenue</strong>
+              <ul>
+                <li>Service fee on completed rentals</li>
+                <li>Featured / priority listings</li>
+                <li>B2B cooperative partnerships</li>
+              </ul>
+              <p style="margin-top: 0.6rem">
+                Start light on fees to drive adoption; scale with transaction
+                volume.
+              </p>
+            </article>
+            <article class="card">
+              <strong>Competition</strong>
+              <p>
+                Informal networks, social posts, general classifieds, and
+                dealer hire desks — none combine local climate-tool focus with a
+                renter/owner portal.
+              </p>
+            </article>
+          </div>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 8 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 -->
+      <section class="slide">
+        <div class="slide-inner">
+          <p class="eyebrow">Roadmap</p>
+          <h2>Next milestones · 24 months</h2>
+          <div class="grid-3">
+            <article class="card">
+              <span class="tag">0–6 months</span>
+              <strong>Validate &amp; activate</strong>
+              <ul>
+                <li>Farmer &amp; owner field demos</li>
+                <li>First real listings in Eldoret</li>
+                <li>Tighten trust &amp; booking UX</li>
+              </ul>
+            </article>
+            <article class="card">
+              <span class="tag">6–14 months</span>
+              <strong>Grow the network</strong>
+              <ul>
+                <li>Expand across Uasin Gishu</li>
+                <li>Availability calendar &amp; receipts</li>
+                <li>Cooperative partnerships</li>
+              </ul>
+            </article>
+            <article class="card">
+              <span class="tag">14–24 months</span>
+              <strong>Replicate &amp; scale</strong>
+              <ul>
+                <li>Neighboring counties</li>
+                <li>Higher transaction volume</li>
+                <li>Climate program partnerships</li>
+              </ul>
+            </article>
+          </div>
+          <p class="lead" style="margin-top: 1rem; font-size: 0.92rem">
+            Near-term ask: accelerate user testing, onboarding, and go-to-market
+            support through the Climate Tech for Resilient Communities Hackathon.
+          </p>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 9 / 10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10 -->
+      <section class="slide hero">
+        <div class="slide-inner">
+          <p class="eyebrow">The ask</p>
+          <h2 style="margin-top: 0.6rem">
+            Help us put climate-smart tools within reach of every farm
+          </h2>
+          <div class="grid-2" style="margin-top: 1.2rem">
+            <div class="dark-card">
+              <strong>What we bring</strong>
+              <p>
+                A live MVP, clear local focus (Eldoret / Uasin Gishu), and a
+                practical model: list → find nearest → book dates → pay on
+                delivery.
+              </p>
+            </div>
+            <div class="dark-card">
+              <strong>What we need</strong>
+              <p>
+                Mentorship, field access, visibility, and partnership pathways
+                to validate with farmers and scale shared equipment access.
+              </p>
+            </div>
+          </div>
+          <div class="dark-card" style="margin-top: 1rem">
+            <strong>Team</strong>
+            <p style="margin-top: 0.55rem; font-size: 1rem; color: #ffffff; font-style: normal">
+              <strong style="color: #ffffff">Alex Joseph</strong>
+              <span style="color: #c5d6cb"> · </span>
+              Founder / Lead Developer
+            </p>
+            <p style="margin-top: 0.45rem; font-size: 0.92rem; color: #e8f2ea">
+              Eldoret, Uasin Gishu
+              <span style="color: #7a9a86"> · </span>
+              +254 769 591 223
+              <span style="color: #7a9a86"> · </span>
+              josephmudavia@gmail.com
+            </p>
+            <p style="margin-top: 0.65rem; font-size: 0.9rem; color: #e8f2ea">
+              <strong style="color: #ffffff">Live demo:</strong>
+              <a
+                href="https://shamba-share-site.vercel.app/"
+                style="color: #9fd4e4; text-decoration: none; border-bottom: 1px solid #4a7a88"
+                >shamba-share-site.vercel.app</a
+              >
+              <span style="color: #7a9a86"> · </span>
+              <strong style="color: #ffffff">Code:</strong>
+              <a
+                href="https://github.com/josephalexofficial/ShambaShare"
+                style="color: #9fd4e4; text-decoration: none; border-bottom: 1px solid #4a7a88"
+                >github.com/josephalexofficial/ShambaShare</a
+              >
+            </p>
+          </div>
+          <div class="footer-meta">
+            <span class="brand">ShambaShare</span>
+            <span>Slide 10 / 10 · Thank you</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
