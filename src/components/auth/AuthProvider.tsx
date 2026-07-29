@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { User } from "@supabase/supabase-js";
-import { isSelfServiceRole, type UserRole } from "@/lib/constants";
+import { USER_ROLES, isSelfServiceRole, type UserRole } from "@/lib/constants";
 import {
   accountToSession,
   findLocalAccount,
@@ -64,6 +64,14 @@ function metaString(user: User, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+/** Only accept a role that is a real, known role — never guess. */
+function normalizeRole(value: unknown): UserRole | null {
+  return typeof value === "string" &&
+    USER_ROLES.some((item) => item.value === value)
+    ? (value as UserRole)
+    : null;
+}
+
 /**
  * Build a SessionUser from a Supabase auth user. Prefers a `profiles` row when
  * available, but falls back to the auth user's metadata so the app still works
@@ -89,9 +97,12 @@ async function toSupabaseSessionUser(user: User): Promise<SessionUser> {
     // profiles table may not exist yet — metadata fallback below.
   }
 
-  const role = (profile?.role ||
-    metaString(user, "role") ||
-    "both") as UserRole;
+  // Signup metadata is authoritative for the role; the profiles table is only a
+  // fallback (its column defaults to "both", so it must not win).
+  const role =
+    normalizeRole(metaString(user, "role")) ??
+    normalizeRole(profile?.role) ??
+    "both";
 
   return {
     id: user.id,
@@ -308,7 +319,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (data.session?.user) {
-            const su = await toSupabaseSessionUser(data.session.user);
+            // Build from the form so the chosen role is exact (no re-read races).
+            const su: SessionUser = {
+              id: data.session.user.id,
+              email,
+              fullName,
+              phone,
+              county,
+              role,
+              source: "supabase",
+            };
             await syncProfile(su);
             upsertLocalAccount({
               id: su.id,
