@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ShambaAssistant } from "@/components/assistant/ShambaAssistant";
 import { SITE } from "@/lib/constants";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="site-shell flex min-h-full flex-col font-sans antialiased">
         <AuthProvider>
           <MarketingShell>{children}</MarketingShell>
+          <ShambaAssistant />
         </AuthProvider>
       </body>
     </html>
