@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { User } from "@supabase/supabase-js";
 import { isSelfServiceRole, type UserRole } from "@/lib/constants";
 import {
   accountToSession,
@@ -22,11 +23,11 @@ import {
   writeLocalSession,
   type SessionUser,
 } from "@/lib/auth/session";
-import { clearPortalMode } from "@/lib/portal-mode";
 import {
   createBrowserSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
+import { clearPortalMode } from "@/lib/portal-mode";
 
 type SignUpInput = {
   fullName: string;
@@ -58,7 +59,72 @@ function resetPortalModeIfBoth(sessionUser: SessionUser) {
   if (sessionUser.role === "both") clearPortalMode(sessionUser.id);
 }
 
-function saveAccountAndSession(input: {
+function metaString(user: User, key: string): string {
+  const value = (user.user_metadata as Record<string, unknown> | null)?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * Build a SessionUser from a Supabase auth user. Prefers a `profiles` row when
+ * available, but falls back to the auth user's metadata so the app still works
+ * even before a profiles table / RLS policies are set up.
+ */
+async function toSupabaseSessionUser(user: User): Promise<SessionUser> {
+  let profile: {
+    full_name?: string | null;
+    phone?: string | null;
+    county?: string | null;
+    role?: string | null;
+  } | null = null;
+
+  try {
+    const supabase = createBrowserSupabaseClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, phone, county, role")
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = data ?? null;
+  } catch {
+    // profiles table may not exist yet — metadata fallback below.
+  }
+
+  const role = (profile?.role ||
+    metaString(user, "role") ||
+    "both") as UserRole;
+
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    fullName:
+      profile?.full_name ||
+      metaString(user, "full_name") ||
+      user.email ||
+      "ShambaShare user",
+    phone: profile?.phone || metaString(user, "phone") || "",
+    county: profile?.county || metaString(user, "county") || "Uasin Gishu",
+    role,
+    source: "supabase",
+  };
+}
+
+/** Best-effort mirror to a `profiles` table (ignored if it doesn't exist). */
+async function syncProfile(user: SessionUser) {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    await supabase.from("profiles").upsert({
+      id: user.id,
+      full_name: user.fullName,
+      phone: user.phone,
+      county: user.county,
+      role: user.role,
+    });
+  } catch {
+    // ignore
+  }
+}
+
+function saveLocalAccountAndSession(input: {
   id: string;
   email: string;
   password: string;
@@ -82,129 +148,67 @@ function saveAccountAndSession(input: {
   return sessionUser;
 }
 
-async function syncSupabaseSignUp(input: {
-  email: string;
-  password: string;
-  fullName: string;
-  phone: string;
-  county: string;
-  role: UserRole;
-}): Promise<string | null> {
-  if (!isSupabaseConfigured()) return null;
-  try {
-    const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: {
-          full_name: input.fullName,
-          phone: input.phone,
-          county: input.county,
-          role: input.role,
-        },
-      },
-    });
-
-    if (error) {
-      console.warn("Supabase signup (non-blocking):", error.message);
-      return null;
-    }
-
-    const userId = data.user?.id ?? null;
-    if (userId) {
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        full_name: input.fullName,
-        phone: input.phone,
-        county: input.county,
-        role: input.role,
-      });
-      if (profileError) console.warn(profileError.message);
-    }
-    return userId;
-  } catch (error) {
-    console.warn("Supabase signup failed (non-blocking):", error);
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const local = readLocalSession();
-    if (local) setUser(local);
-    setLoading(false);
-  }, []);
+    let active = true;
 
-  const signUp = useCallback(async (input: SignUpInput) => {
-    const email = normalizeEmail(input.email);
-    const password = input.password.trim();
-
-    if (!email || password.length < 6) {
-      return { error: "Enter a valid email and a password of at least 6 characters." };
+    if (!isSupabaseConfigured()) {
+      const local = readLocalSession();
+      if (local) setUser(local);
+      setLoading(false);
+      return;
     }
 
-    // Local-first: account must work even if Supabase email confirmation blocks login.
-    const localId = crypto.randomUUID();
-    const sessionUser = saveAccountAndSession({
-      id: localId,
-      email,
-      password,
-      fullName: input.fullName.trim(),
-      phone: input.phone.trim(),
-      county: input.county.trim() || "Uasin Gishu",
-      role: input.role,
-      source: "local",
-    });
-    resetPortalModeIfBoth(sessionUser);
-    setUser(sessionUser);
+    const supabase = createBrowserSupabaseClient();
 
-    const supabaseId = await syncSupabaseSignUp({
-      email,
-      password,
-      fullName: input.fullName.trim(),
-      phone: input.phone.trim(),
-      county: input.county.trim() || "Uasin Gishu",
-      role: input.role,
-    });
-
-    if (supabaseId) {
-      const synced = saveAccountAndSession({
-        id: supabaseId,
-        email,
-        password,
-        fullName: input.fullName.trim(),
-        phone: input.phone.trim(),
-        county: input.county.trim() || "Uasin Gishu",
-        role: input.role,
-        source: "supabase",
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!active) return;
+        if (data.session?.user) {
+          const su = await toSupabaseSessionUser(data.session.user);
+          if (!active) return;
+          setUser(su);
+          writeLocalSession(su);
+        } else {
+          const local = readLocalSession();
+          if (local) setUser(local);
+        }
+        if (active) setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        const local = readLocalSession();
+        if (local) setUser(local);
+        setLoading(false);
       });
-      resetPortalModeIfBoth(synced);
-      setUser(synced);
-      return { user: synced };
-    }
 
-    return { user: sessionUser };
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const su = await toSupabaseSessionUser(session.user);
+          setUser(su);
+          writeLocalSession(su);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          clearLocalSession();
+        }
+      },
+    );
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = useCallback(async (input: SignInInput) => {
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
 
-    // 1) Local accounts are the source of truth for portal login.
-    const local = verifyLocalAccount(email, password);
-    if (local) {
-      const session = accountToSession(local, "local");
-      writeLocalSession(session);
-      resetPortalModeIfBoth(session);
-      setUser(session);
-      return { user: session };
-    }
-
-    // 2) Optional Supabase fallback (confirmed accounts only).
     if (isSupabaseConfigured()) {
       try {
         const supabase = createBrowserSupabaseClient();
@@ -214,47 +218,145 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!error && data.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, phone, county, role")
-            .eq("id", data.user.id)
-            .maybeSingle();
-
-          const sessionUser = saveAccountAndSession({
-            id: data.user.id,
+          const su = await toSupabaseSessionUser(data.user);
+          upsertLocalAccount({
+            id: su.id,
             email,
             password,
-            fullName:
-              profile?.full_name ?? data.user.email ?? "ShambaShare user",
-            phone: profile?.phone ?? "",
-            county: profile?.county ?? "Uasin Gishu",
-            role: (profile?.role as UserRole) ?? "both",
-            source: "supabase",
+            fullName: su.fullName,
+            phone: su.phone,
+            county: su.county,
+            role: su.role,
           });
-          resetPortalModeIfBoth(sessionUser);
-          setUser(sessionUser);
-          return { user: sessionUser };
+          resetPortalModeIfBoth(su);
+          setUser(su);
+          writeLocalSession(su);
+          return { user: su };
         }
+
+        // Supabase rejected — try a local account created on this device.
+        const local = verifyLocalAccount(email, password);
+        if (local) {
+          const su = accountToSession(local, "local");
+          resetPortalModeIfBoth(su);
+          setUser(su);
+          writeLocalSession(su);
+          return { user: su };
+        }
+
+        if (error && /email not confirmed/i.test(error.message)) {
+          return {
+            error:
+              "Please confirm your email first (check your inbox), then sign in.",
+          };
+        }
+        return { error: "Invalid email or password." };
       } catch (error) {
-        console.warn(error);
+        console.warn("Supabase sign-in failed, trying local:", error);
       }
     }
 
+    const local = verifyLocalAccount(email, password);
+    if (local) {
+      const su = accountToSession(local, "local");
+      resetPortalModeIfBoth(su);
+      setUser(su);
+      writeLocalSession(su);
+      return { user: su };
+    }
     if (findLocalAccount(email)) {
       return { error: "Wrong password for this email." };
     }
-
     return {
-      error:
-        "No saved account for this email on this device. Open Join and create your account again (same email is fine).",
+      error: "No account found for this email. Open Join to create one.",
     };
   }, []);
+
+  const signUp = useCallback(
+    async (input: SignUpInput) => {
+      const email = normalizeEmail(input.email);
+      const password = input.password.trim();
+      const fullName = input.fullName.trim();
+      const phone = input.phone.trim();
+      const county = input.county.trim() || "Uasin Gishu";
+      const role = input.role;
+
+      if (!email || password.length < 6) {
+        return {
+          error:
+            "Enter a valid email and a password of at least 6 characters.",
+        };
+      }
+
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = createBrowserSupabaseClient();
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: fullName, phone, county, role },
+            },
+          });
+
+          if (error) {
+            if (/registered|already/i.test(error.message)) {
+              // Account exists — sign them in instead.
+              return await signIn({ email, password });
+            }
+            return { error: error.message };
+          }
+
+          if (data.session?.user) {
+            const su = await toSupabaseSessionUser(data.session.user);
+            await syncProfile(su);
+            upsertLocalAccount({
+              id: su.id,
+              email,
+              password,
+              fullName: su.fullName,
+              phone: su.phone,
+              county: su.county,
+              role: su.role,
+            });
+            resetPortalModeIfBoth(su);
+            setUser(su);
+            writeLocalSession(su);
+            return { user: su };
+          }
+
+          // No session returned => email confirmation is enabled.
+          return {
+            error:
+              "Account created, but email confirmation is on. Confirm via the email we sent, then sign in. To allow instant login across devices, disable email confirmation in Supabase → Authentication → Providers → Email.",
+          };
+        } catch (error) {
+          console.warn("Supabase signup failed, using local account:", error);
+        }
+      }
+
+      // Local-only fallback (Supabase not configured or unreachable).
+      const su = saveLocalAccountAndSession({
+        id: crypto.randomUUID(),
+        email,
+        password,
+        fullName,
+        phone,
+        county,
+        role,
+        source: "local",
+      });
+      resetPortalModeIfBoth(su);
+      setUser(su);
+      return { user: su };
+    },
+    [signIn],
+  );
 
   const signOut = useCallback(async () => {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createBrowserSupabaseClient();
-        await supabase.auth.signOut();
+        await createBrowserSupabaseClient().auth.signOut();
       } catch {
         // ignore
       }
@@ -292,6 +394,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           county: next.county,
           role: next.role,
         });
+      }
+
+      if (isSupabaseConfigured() && next.source === "supabase") {
+        try {
+          const supabase = createBrowserSupabaseClient();
+          void supabase.auth.updateUser({
+            data: {
+              full_name: next.fullName,
+              phone: next.phone,
+              county: next.county,
+              role: next.role,
+            },
+          });
+          void syncProfile(next);
+        } catch {
+          // ignore
+        }
       }
 
       return next;
