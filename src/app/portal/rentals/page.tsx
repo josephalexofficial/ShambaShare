@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { canList } from "@/lib/constants";
 import { SEED_OWNER_BOOKINGS, type PortalBooking } from "@/lib/seed-portal";
 import { ButtonLink } from "@/components/ui/Button";
 
 export default function PortalRentalsPage() {
   const { user } = useAuth();
+  const { effectiveRole } = usePortalMode();
   const [rows, setRows] = useState<PortalBooking[]>(SEED_OWNER_BOOKINGS);
 
-  if (!user || !canList(user.role)) {
+  if (!user || !canList(effectiveRole)) {
     return (
       <div className="field-panel-strong rounded-xl p-8 text-center">
         <h1 className="font-display text-2xl font-semibold text-green-950">

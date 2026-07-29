@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useNotifications } from "@/components/portal/NotificationsProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { StatCard } from "@/components/portal/StatCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { canList, canRent, isAdmin } from "@/lib/constants";
@@ -23,6 +24,7 @@ import { readBookings } from "@/lib/bookings-store";
 export default function PortalOverviewPage() {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
+  const { effectiveRole } = usePortalMode();
   const [myBookings, setMyBookings] = useState(0);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function PortalOverviewPage() {
 
   if (!user) return null;
 
-  if (isAdmin(user.role)) {
+  if (isAdmin(effectiveRole)) {
     return (
       <div className="space-y-8">
         <div>
@@ -71,8 +73,8 @@ export default function PortalOverviewPage() {
   const incomeTotal = SEED_INCOME_ROWS.reduce((sum, row) => sum + row.amount, 0);
   const availableTools = SEED_EQUIPMENT.filter((e) => e.isAvailable).length;
   const firstName = user.fullName.split(" ")[0] || "there";
-  const isRenterOnly = canRent(user.role) && !canList(user.role);
-  const isBoth = canRent(user.role) && canList(user.role);
+  const isRenterOnly = canRent(effectiveRole) && !canList(effectiveRole);
+  const isBoth = canRent(effectiveRole) && canList(effectiveRole);
 
   return (
     <div className="space-y-7">
@@ -101,13 +103,13 @@ export default function PortalOverviewPage() {
             <p className="mt-2 text-sm leading-relaxed text-white/85 sm:text-[0.95rem]">
               {isBoth
                 ? "Rent tools when you need them, and earn when your own equipment is idle."
-                : canList(user.role)
+                : canList(effectiveRole)
                   ? "Track requests, active rentals, and income from shared climate-smart tools."
                   : "Find nearby tools, book with clear return dates, and track every rental in one place."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {canRent(user.role) ? (
+            {canRent(effectiveRole) ? (
               <ButtonLink
                 href="/portal/find"
                 variant="on-dark"
@@ -117,7 +119,7 @@ export default function PortalOverviewPage() {
                 <ArrowRight size={16} />
               </ButtonLink>
             ) : null}
-            {canList(user.role) ? (
+            {canList(effectiveRole) ? (
               <ButtonLink
                 href="/portal/listings"
                 variant="on-dark-outline"
@@ -132,7 +134,7 @@ export default function PortalOverviewPage() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {canRent(user.role) ? (
+        {canRent(effectiveRole) ? (
           <>
             <StatCard
               label="My bookings"
@@ -150,7 +152,7 @@ export default function PortalOverviewPage() {
             />
           </>
         ) : null}
-        {canList(user.role) ? (
+        {canList(effectiveRole) ? (
           <>
             <StatCard
               label="Pending requests"
@@ -185,7 +187,7 @@ export default function PortalOverviewPage() {
       </div>
 
       {/* Renter actions */}
-      {canRent(user.role) ? (
+      {canRent(effectiveRole) ? (
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
@@ -224,7 +226,7 @@ export default function PortalOverviewPage() {
       ) : null}
 
       {/* Owner quick start (kept for owner/both) */}
-      {canList(user.role) ? (
+      {canList(effectiveRole) ? (
         <section className="field-panel-strong rounded-2xl p-6">
           <h2 className="text-xl font-semibold tracking-tight text-green-950">
             Owner quick start

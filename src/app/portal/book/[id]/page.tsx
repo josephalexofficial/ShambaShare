@@ -1,10 +1,15 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { canRent } from "@/lib/constants";
-import { getEquipmentById } from "@/lib/seed-equipment";
+import {
+  getMarketplaceListingById,
+  isOwnListing,
+  type MarketplaceListing,
+} from "@/lib/marketplace";
 import { addBooking, daysBetween } from "@/lib/bookings-store";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
@@ -12,12 +17,19 @@ export default function PortalBookPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const item = getEquipmentById(params.id);
+  const { effectiveRole } = usePortalMode();
+  const [item, setItem] = useState<MarketplaceListing | null | undefined>(
+    undefined,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  if (!user || !canRent(user.role)) {
+  useEffect(() => {
+    setItem(getMarketplaceListingById(params.id));
+  }, [params.id]);
+
+  if (!user || !canRent(effectiveRole)) {
     return (
       <div className="field-panel-strong rounded-xl p-8 text-center">
         <h1 className="font-display text-2xl font-semibold text-green-950">
@@ -25,6 +37,31 @@ export default function PortalBookPage() {
         </h1>
         <ButtonLink href="/join?intent=renter" className="mt-6">
           Join as Renter
+        </ButtonLink>
+      </div>
+    );
+  }
+
+  if (item === undefined) {
+    return (
+      <div className="field-panel-strong rounded-xl p-8 text-center">
+        <p className="text-ink-muted">Loading tool…</p>
+      </div>
+    );
+  }
+
+  // Guard: a member can never rent their own tool.
+  if (item && isOwnListing(item, user.id)) {
+    return (
+      <div className="field-panel-strong rounded-xl p-8 text-center">
+        <h1 className="font-display text-2xl font-semibold text-green-950">
+          This is your own tool
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-ink-muted">
+          You can’t rent equipment you own. Manage it from My listings instead.
+        </p>
+        <ButtonLink href="/portal/listings" className="mt-6" variant="secondary">
+          Go to My listings
         </ButtonLink>
       </div>
     );

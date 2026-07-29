@@ -22,6 +22,7 @@ import {
   writeLocalSession,
   type SessionUser,
 } from "@/lib/auth/session";
+import { clearPortalMode } from "@/lib/portal-mode";
 import {
   createBrowserSupabaseClient,
   isSupabaseConfigured,
@@ -51,6 +52,11 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** "Both" members must re-choose their side (renter/owner) on each new session. */
+function resetPortalModeIfBoth(sessionUser: SessionUser) {
+  if (sessionUser.role === "both") clearPortalMode(sessionUser.id);
+}
 
 function saveAccountAndSession(input: {
   id: string;
@@ -153,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: input.role,
       source: "local",
     });
+    resetPortalModeIfBoth(sessionUser);
     setUser(sessionUser);
 
     const supabaseId = await syncSupabaseSignUp({
@@ -175,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: input.role,
         source: "supabase",
       });
+      resetPortalModeIfBoth(synced);
       setUser(synced);
       return { user: synced };
     }
@@ -191,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (local) {
       const session = accountToSession(local, "local");
       writeLocalSession(session);
+      resetPortalModeIfBoth(session);
       setUser(session);
       return { user: session };
     }
@@ -222,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: (profile?.role as UserRole) ?? "both",
             source: "supabase",
           });
+          resetPortalModeIfBoth(sessionUser);
           setUser(sessionUser);
           return { user: sessionUser };
         }
@@ -249,6 +259,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
+    const current = readLocalSession();
+    if (current) clearPortalMode(current.id);
     clearLocalSession();
     setUser(null);
   }, []);

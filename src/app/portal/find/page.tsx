@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { canRent } from "@/lib/constants";
+import { ELDORET_CENTER, haversineKm } from "@/lib/seed-equipment";
 import {
-  ELDORET_CENTER,
-  SEED_EQUIPMENT,
-  haversineKm,
-} from "@/lib/seed-equipment";
+  getMarketplaceListings,
+  isOwnListing,
+  type MarketplaceListing,
+} from "@/lib/marketplace";
 import {
   EquipmentCard,
   FindToolsFilterBar,
@@ -16,21 +18,21 @@ import { ButtonLink } from "@/components/ui/Button";
 
 export default function PortalFindPage() {
   const { user } = useAuth();
+  const { effectiveRole } = usePortalMode();
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const [allListings, setAllListings] = useState<MarketplaceListing[]>([]);
+
+  useEffect(() => {
+    setAllListings(getMarketplaceListings());
+  }, []);
 
   const listings = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return SEED_EQUIPMENT.map((item) => ({
-      ...item,
-      distanceKm: haversineKm(
-        ELDORET_CENTER.lat,
-        ELDORET_CENTER.lng,
-        item.locationLat,
-        item.locationLng,
-      ),
-    }))
+    return allListings
       .filter((item) => item.isAvailable)
+      // A member can never rent their own tool.
+      .filter((item) => !isOwnListing(item, user?.id))
       .filter((item) => (category === "all" ? true : item.category === category))
       .filter((item) => {
         if (!query) return true;
@@ -41,10 +43,19 @@ export default function PortalFindPage() {
           item.category.toLowerCase().includes(query)
         );
       })
+      .map((item) => ({
+        ...item,
+        distanceKm: haversineKm(
+          ELDORET_CENTER.lat,
+          ELDORET_CENTER.lng,
+          item.locationLat,
+          item.locationLng,
+        ),
+      }))
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [category, search]);
+  }, [allListings, category, search, user?.id]);
 
-  if (!user || !canRent(user.role)) {
+  if (!user || !canRent(effectiveRole)) {
     return (
       <div className="rounded-2xl border border-[color:var(--line)] bg-white p-8 text-center shadow-[0_8px_30px_rgba(18,32,24,0.04)]">
         <h1 className="text-2xl font-semibold text-green-950">

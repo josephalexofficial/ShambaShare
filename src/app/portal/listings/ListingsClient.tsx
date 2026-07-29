@@ -11,6 +11,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import {
   EQUIPMENT_CATEGORIES,
@@ -29,6 +30,7 @@ const inputClass =
 
 export default function ListingsClient() {
   const { user } = useAuth();
+  const { effectiveRole } = usePortalMode();
   const router = useRouter();
   const searchParams = useSearchParams();
   const wantNew = searchParams.get("new") === "1";
@@ -55,7 +57,7 @@ export default function ListingsClient() {
     ) as Record<EquipmentCategory, string>;
   }, []);
 
-  if (!user || !canList(user.role)) {
+  if (!user || !canList(effectiveRole)) {
     return (
       <div className="field-panel-strong rounded-2xl p-8 text-center">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-green-800/10 text-green-800">

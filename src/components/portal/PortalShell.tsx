@@ -3,39 +3,45 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
-import { Bell, LogOut, Menu, Sprout, X } from "lucide-react";
-import { SITE } from "@/lib/constants";
+import { Bell, LogOut, Menu, Search, Sprout, Wrench, X } from "lucide-react";
+import { SITE, type UserRole } from "@/lib/constants";
 import { navForRole } from "@/lib/portal-nav";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   NotificationsProvider,
   useNotifications,
 } from "@/components/portal/NotificationsProvider";
+import {
+  PortalModeProvider,
+  usePortalMode,
+} from "@/components/portal/PortalModeProvider";
+import { PortalModeSelect } from "@/components/portal/PortalModeSelect";
 import { ButtonLink } from "@/components/ui/Button";
+import type { PortalMode } from "@/lib/portal-mode";
 import type { SessionUser } from "@/lib/auth/session";
 
-function roleLabel(role: string) {
-  if (role === "both") return "Renter & Owner";
+function roleLabel(role: UserRole) {
   return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function Loader({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[color:var(--cream-field)]">
+      <div className="flex flex-col items-center gap-3">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-700 to-green-900 text-white shadow-[0_10px_28px_rgba(27,77,50,0.28)]">
+          <Sprout size={22} />
+        </span>
+        <p className="text-sm font-medium text-ink-muted">{message}</p>
+      </div>
+    </div>
+  );
 }
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth();
-  const router = useRouter();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[color:var(--cream-field)]">
-        <div className="flex flex-col items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-700 to-green-900 text-white shadow-[0_10px_28px_rgba(27,77,50,0.28)]">
-            <Sprout size={22} />
-          </span>
-          <p className="text-sm font-medium text-ink-muted">
-            Opening your portal…
-          </p>
-        </div>
-      </div>
-    );
+    return <Loader message="Opening your portal…" />;
   }
 
   if (!user) {
@@ -62,28 +68,58 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   return (
     <NotificationsProvider userId={user.id} role={user.role}>
-      <PortalShellInner user={user} signOut={signOut} routerPush={router.push}>
-        {children}
-      </PortalShellInner>
+      <PortalModeProvider userId={user.id} role={user.role}>
+        <PortalGate user={user} signOut={signOut}>
+          {children}
+        </PortalGate>
+      </PortalModeProvider>
     </NotificationsProvider>
+  );
+}
+
+function PortalGate({
+  user,
+  signOut,
+  children,
+}: {
+  user: SessionUser;
+  signOut: () => Promise<void>;
+  children: React.ReactNode;
+}) {
+  const { ready, needsSelection, effectiveRole } = usePortalMode();
+
+  if (!ready) {
+    return <Loader message="Opening your portal…" />;
+  }
+
+  if (needsSelection || !effectiveRole) {
+    return <PortalModeSelect />;
+  }
+
+  return (
+    <PortalShellInner user={user} effectiveRole={effectiveRole} signOut={signOut}>
+      {children}
+    </PortalShellInner>
   );
 }
 
 function PortalShellInner({
   user,
+  effectiveRole,
   children,
   signOut,
-  routerPush,
 }: {
   user: SessionUser;
+  effectiveRole: UserRole;
   children: React.ReactNode;
   signOut: () => Promise<void>;
-  routerPush: (href: string) => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const { unreadCount } = useNotifications();
-  const items = navForRole(user.role);
+  const { isBoth, mode, setMode } = usePortalMode();
+  const items = navForRole(effectiveRole);
   const firstName = user.fullName.split(" ")[0] || "friend";
   const drawerTitleId = useId();
 
@@ -111,7 +147,14 @@ function PortalShellInner({
   async function handleSignOut() {
     setOpen(false);
     await signOut();
-    routerPush("/");
+    router.push("/");
+  }
+
+  function switchMode(next: PortalMode) {
+    if (next === mode) return;
+    setOpen(false);
+    setMode(next);
+    router.push("/portal/overview");
   }
 
   function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -152,6 +195,43 @@ function PortalShellInner({
     );
   }
 
+  function ModeSwitcher() {
+    if (!isBoth) return null;
+    const tabs: { value: PortalMode; label: string; icon: typeof Search }[] = [
+      { value: "renter", label: "Renter", icon: Search },
+      { value: "owner", label: "Owner", icon: Wrench },
+    ];
+    return (
+      <div className="px-3 pt-3">
+        <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+          Acting as
+        </p>
+        <div className="flex gap-1 rounded-xl bg-[color:var(--cream-field)] p-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = mode === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => switchMode(tab.value)}
+                aria-pressed={active}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition ${
+                  active
+                    ? "bg-white text-green-900 shadow-[0_4px_12px_rgba(18,32,24,0.08)]"
+                    : "text-ink-muted hover:text-green-900"
+                }`}
+              >
+                <Icon size={14} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   function BrandBlock({ onNavigate }: { onNavigate?: () => void }) {
     return (
       <div className="border-b border-[color:var(--line)] px-4 py-5">
@@ -169,7 +249,7 @@ function PortalShellInner({
                 {SITE.name}
               </span>
               <span className="mt-0.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-water-700">
-                {roleLabel(user.role)} portal
+                {roleLabel(effectiveRole)} portal
               </span>
             </span>
           </Link>
@@ -217,6 +297,7 @@ function PortalShellInner({
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-[16.5rem] shrink-0 flex-col border-r border-[color:var(--line)] bg-white/80 backdrop-blur-md lg:flex">
           <BrandBlock />
+          <ModeSwitcher />
           <NavLinks />
           <AccountFooter />
         </aside>
@@ -244,6 +325,7 @@ function PortalShellInner({
               Portal menu
             </h2>
             <BrandBlock onNavigate={() => setOpen(false)} />
+            <ModeSwitcher />
             <NavLinks onNavigate={() => setOpen(false)} />
             <AccountFooter />
           </aside>

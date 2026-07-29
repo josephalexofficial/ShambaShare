@@ -10,6 +10,7 @@ import {
   Package,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { canRent } from "@/lib/constants";
 import { readBookings } from "@/lib/bookings-store";
 import type { PortalBooking } from "@/lib/seed-portal";
@@ -33,6 +34,7 @@ const statusHints: Record<string, string> = {
 
 export default function BookingsClient() {
   const { user } = useAuth();
+  const { effectiveRole } = usePortalMode();
   const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<PortalBooking[]>([]);
 
@@ -40,7 +42,7 @@ export default function BookingsClient() {
     setBookings(readBookings());
   }, []);
 
-  if (!user || !canRent(user.role)) {
+  if (!user || !canRent(effectiveRole)) {
     return (
       <div className="field-panel-strong rounded-2xl p-8 text-center">
         <h1 className="text-2xl font-semibold text-green-950">

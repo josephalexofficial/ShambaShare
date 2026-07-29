@@ -60,6 +60,21 @@ export const EQUIPMENT_CATEGORIES = [
 
 export type EquipmentCategory = (typeof EQUIPMENT_CATEGORIES)[number]["value"];
 
+/**
+ * The role a member is *currently acting as*.
+ *
+ * A "both" member behaves as a renter or an owner depending on the portal mode
+ * they picked at login. Everyone else acts as their fixed role.
+ */
+export function resolveEffectiveRole(
+  role: UserRole | null | undefined,
+  mode: "renter" | "owner" | null | undefined,
+): UserRole | null {
+  if (!role) return null;
+  if (role === "both") return mode ?? null;
+  return role;
+}
+
 export function canRent(role: UserRole | null | undefined) {
   return role === "renter" || role === "both";
 }
