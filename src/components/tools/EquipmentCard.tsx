@@ -4,16 +4,26 @@ import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Search } from "lucide-react";
 import { EQUIPMENT_CATEGORIES } from "@/lib/constants";
-import type { SeedEquipment } from "@/lib/seed-equipment";
-
 function categoryLabel(value: string) {
   return (
     EQUIPMENT_CATEGORIES.find((item) => item.value === value)?.label ?? value
   );
 }
 
+type CardListing = {
+  id: string;
+  title: string;
+  category: string;
+  ratePerDay: number;
+  locationLabel: string;
+  imageUrl: string;
+  ownerName: string;
+  isAvailable: boolean;
+  distanceKm: number;
+};
+
 type EquipmentCardProps = {
-  item: SeedEquipment & { distanceKm: number };
+  item: CardListing;
   href: string;
   ctaLabel?: string;
   index?: number;

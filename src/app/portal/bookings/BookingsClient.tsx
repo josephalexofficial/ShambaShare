@@ -12,7 +12,10 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { canRent } from "@/lib/constants";
-import { readBookings } from "@/lib/bookings-store";
+import {
+  ensureSeedBookings,
+  readBookingsForRenter,
+} from "@/lib/bookings-store";
 import type { PortalBooking } from "@/lib/seed-portal";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -39,8 +42,10 @@ export default function BookingsClient() {
   const [bookings, setBookings] = useState<PortalBooking[]>([]);
 
   useEffect(() => {
-    setBookings(readBookings());
-  }, []);
+    if (!user) return;
+    ensureSeedBookings();
+    setBookings(readBookingsForRenter(user.id));
+  }, [user]);
 
   if (!user || !canRent(effectiveRole)) {
     return (

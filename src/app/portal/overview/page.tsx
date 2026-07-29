@@ -18,18 +18,37 @@ import { StatCard } from "@/components/portal/StatCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { canList, canRent, isAdminStaff } from "@/lib/constants";
 import { SEED_EQUIPMENT } from "@/lib/seed-equipment";
-import { SEED_INCOME_ROWS, SEED_OWNER_BOOKINGS } from "@/lib/seed-portal";
-import { readBookings } from "@/lib/bookings-store";
+import { SEED_INCOME_ROWS } from "@/lib/seed-portal";
+import {
+  ensureSeedBookings,
+  readBookingsForOwner,
+  readBookingsForRenter,
+} from "@/lib/bookings-store";
 
 export default function PortalOverviewPage() {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const { effectiveRole } = usePortalMode();
   const [myBookings, setMyBookings] = useState(0);
+  const [ownerPending, setOwnerPending] = useState(0);
+  const [ownerActive, setOwnerActive] = useState(0);
+  const [incomeTotal, setIncomeTotal] = useState(0);
 
   useEffect(() => {
-    setMyBookings(readBookings().length);
-  }, []);
+    if (!user) return;
+    ensureSeedBookings();
+    setMyBookings(readBookingsForRenter(user.id).length);
+    const ownerRows = readBookingsForOwner(user.id);
+    setOwnerPending(ownerRows.filter((b) => b.status === "pending").length);
+    setOwnerActive(ownerRows.filter((b) => b.status === "active").length);
+    const returned = ownerRows
+      .filter((b) => b.status === "returned")
+      .reduce((sum, b) => sum + b.totalKes, 0);
+    const seedIncome = SEED_INCOME_ROWS.filter(
+      (row) => row.ownerId === user.id,
+    ).reduce((sum, row) => sum + row.amount, 0);
+    setIncomeTotal(returned + seedIncome);
+  }, [user]);
 
   if (!user) return null;
 
@@ -72,13 +91,6 @@ export default function PortalOverviewPage() {
     );
   }
 
-  const ownerPending = SEED_OWNER_BOOKINGS.filter(
-    (b) => b.status === "pending",
-  ).length;
-  const ownerActive = SEED_OWNER_BOOKINGS.filter(
-    (b) => b.status === "active",
-  ).length;
-  const incomeTotal = SEED_INCOME_ROWS.reduce((sum, row) => sum + row.amount, 0);
   const availableTools = SEED_EQUIPMENT.filter((e) => e.isAvailable).length;
   const firstName = user.fullName.split(" ")[0] || "there";
   const isRenterOnly = canRent(effectiveRole) && !canList(effectiveRole);

@@ -40,9 +40,10 @@ export function getMarketplaceListings(): MarketplaceListing[] {
 
   const seed: MarketplaceListing[] = SEED_EQUIPMENT.map((item) => ({
     ...item,
-    ownerId: null,
+    ownerId: item.ownerId,
   }));
 
+  // Owner posts first so freshly listed tools surface quickly for renters.
   return [...owned, ...seed];
 }
 

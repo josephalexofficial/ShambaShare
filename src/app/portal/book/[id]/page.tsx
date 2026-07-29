@@ -95,11 +95,18 @@ export default function PortalBookPage() {
     const days = daysBetween(startDate, returnDate);
     const totalKes = days * item!.ratePerDay;
 
+    if (!item!.ownerId) {
+      setError("This listing has no owner on record, so it can’t be booked.");
+      return;
+    }
+
     addBooking({
       id: `bk-${Date.now()}`,
       equipmentId: item!.id,
       equipmentTitle: item!.title,
+      ownerId: item!.ownerId,
       ownerName: item!.ownerName,
+      renterId: user!.id,
       renterName: user!.fullName,
       renterPhone: user!.phone,
       startDate,

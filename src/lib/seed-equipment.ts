@@ -1,4 +1,5 @@
 import type { EquipmentCategory } from "@/lib/constants";
+import { DEMO_OWNERS } from "@/lib/auth/seed-users";
 
 export type SeedEquipment = {
   id: string;
@@ -11,10 +12,19 @@ export type SeedEquipment = {
   locationLng: number;
   imageUrl: string;
   ownerName: string;
+  ownerId: string;
   isAvailable: boolean;
 };
 
-/** Realistic Eldoret-area seed listings for UI and demo until Supabase is connected. */
+const william = DEMO_OWNERS[0];
+const kiplagat = DEMO_OWNERS[1];
+const rotich = DEMO_OWNERS[2];
+const gladys = DEMO_OWNERS[3];
+
+/**
+ * Catalogue tied to real demo owners so Find tools, bookings, and notifications
+ * all speak the same names.
+ */
 export const SEED_EQUIPMENT: SeedEquipment[] = [
   {
     id: "eq-solar-pump-turbo",
@@ -28,7 +38,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.173,
     imageUrl:
       "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "Amina Cooperative",
+    ownerName: william.fullName,
+    ownerId: william.id,
     isAvailable: true,
   },
   {
@@ -43,7 +54,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.387,
     imageUrl:
       "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "James Kiprotich",
+    ownerName: kiplagat.fullName,
+    ownerId: kiplagat.id,
     isAvailable: true,
   },
   {
@@ -58,7 +70,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.244,
     imageUrl:
       "https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "Eldoret Agri Vendors",
+    ownerName: rotich.fullName,
+    ownerId: rotich.id,
     isAvailable: true,
   },
   {
@@ -73,7 +86,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.326,
     imageUrl:
       "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "Wanjiku Green Tools",
+    ownerName: gladys.fullName,
+    ownerId: gladys.id,
     isAvailable: true,
   },
   {
@@ -88,7 +102,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.18,
     imageUrl:
       "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "Rift Valley Extension Hub",
+    ownerName: kiplagat.fullName,
+    ownerId: kiplagat.id,
     isAvailable: true,
   },
   {
@@ -103,7 +118,8 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.53,
     imageUrl:
       "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80",
-    ownerName: "Daniel Cheruiyot",
+    ownerName: gladys.fullName,
+    ownerId: gladys.id,
     isAvailable: false,
   },
 ];

@@ -11,12 +11,17 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { USER_ROLES, isSelfServiceRole, type UserRole } from "@/lib/constants";
 import {
-  ensureSuperAdminSeeded,
   matchesSuperAdminCredentials,
   resolveStaffRole,
   SUPER_ADMIN,
   isSuperAdminEmail,
 } from "@/lib/auth/admin";
+import { bootstrapDemoNetwork } from "@/lib/demo-network";
+import {
+  DEMO_NETWORK_PASSWORD,
+  getDemoUserByEmail,
+  type SeedDemoUser,
+} from "@/lib/auth/seed-users";
 import {
   accountToSession,
   findLocalAccount,
@@ -83,8 +88,25 @@ function withStaffRole(user: SessionUser): SessionUser {
   return { ...user, role: resolveStaffRole(user.email, user.role) };
 }
 
+/**
+ * Seeded demo accounts keep stable ids (user-william, etc.) so listings and
+ * bookings stay linked even when Supabase assigns a different auth uuid.
+ */
+function withStableDemoIdentity(user: SessionUser): SessionUser {
+  const demo = getDemoUserByEmail(user.email);
+  if (!demo) return withStaffRole(user);
+  return {
+    ...user,
+    id: demo.id,
+    fullName: demo.fullName,
+    phone: demo.phone,
+    county: demo.county,
+    role: resolveStaffRole(user.email, demo.role),
+  };
+}
+
 function establishSession(user: SessionUser) {
-  const next = withStaffRole(user);
+  const next = withStableDemoIdentity(user);
   resetPortalModeIfBoth(next);
   writeLocalSession(next);
   return next;
@@ -230,6 +252,58 @@ async function provisionSuperAdminOnSupabase(
   return null;
 }
 
+/** Provision a seeded owner/renter on Supabase so hosted login works. */
+async function provisionDemoUserOnSupabase(
+  demo: SeedDemoUser,
+  password: string,
+): Promise<SessionUser | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createBrowserSupabaseClient();
+
+  const signedIn = await supabase.auth.signInWithPassword({
+    email: demo.email,
+    password,
+  });
+  if (!signedIn.error && signedIn.data.user) {
+    const su = await toSupabaseSessionUser(signedIn.data.user);
+    return {
+      ...su,
+      fullName: demo.fullName,
+      phone: demo.phone,
+      county: demo.county,
+      role: demo.role,
+    };
+  }
+
+  const signedUp = await supabase.auth.signUp({
+    email: demo.email,
+    password,
+    options: {
+      data: {
+        full_name: demo.fullName,
+        phone: demo.phone,
+        county: demo.county,
+        role: demo.role,
+      },
+    },
+  });
+
+  if (!signedUp.error && signedUp.data.session?.user) {
+    const su = await toSupabaseSessionUser(signedUp.data.session.user);
+    const next = {
+      ...su,
+      fullName: demo.fullName,
+      phone: demo.phone,
+      county: demo.county,
+      role: demo.role,
+    };
+    await syncProfile(next);
+    return next;
+  }
+
+  return null;
+}
+
 function saveLocalAccountAndSession(input: {
   id: string;
   email: string;
@@ -259,7 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    ensureSuperAdminSeeded();
+    bootstrapDemoNetwork();
 
     if (!isSupabaseConfigured()) {
       const local = readLocalSession();
@@ -310,7 +384,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (input: SignInInput) => {
-    ensureSuperAdminSeeded();
+    bootstrapDemoNetwork();
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
 
@@ -335,6 +409,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.warn("Super-admin Supabase provision failed:", error);
+        }
+      }
+
+      const local = verifyLocalAccount(email, password);
+      if (local) {
+        const session = establishSession(accountToSession(local, "local"));
+        setUser(session);
+        return { user: session };
+      }
+    }
+
+    // Seeded demo network (owners + renters) — local first, then provision hosted.
+    const demoUser = getDemoUserByEmail(email);
+    if (demoUser && password === DEMO_NETWORK_PASSWORD) {
+      if (isSupabaseConfigured()) {
+        try {
+          const provisioned = await provisionDemoUserOnSupabase(
+            demoUser,
+            password,
+          );
+          if (provisioned) {
+            upsertLocalAccount({
+              id: demoUser.id,
+              email: demoUser.email,
+              password,
+              fullName: demoUser.fullName,
+              phone: demoUser.phone,
+              county: demoUser.county,
+              role: demoUser.role,
+            });
+            const session = establishSession({
+              ...provisioned,
+              id: demoUser.id,
+              role: demoUser.role,
+              fullName: demoUser.fullName,
+              phone: demoUser.phone,
+              county: demoUser.county,
+            });
+            setUser(session);
+            return { user: session };
+          }
+        } catch (error) {
+          console.warn("Demo user Supabase provision failed:", error);
         }
       }
 

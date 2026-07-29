@@ -1,3 +1,5 @@
+import { DEMO_OWNERS, DEMO_RENTERS } from "@/lib/auth/seed-users";
+
 export type BookingStatus =
   | "pending"
   | "confirmed"
@@ -9,7 +11,9 @@ export type PortalBooking = {
   id: string;
   equipmentId: string;
   equipmentTitle: string;
+  ownerId: string;
   ownerName: string;
+  renterId: string;
   renterName: string;
   renterPhone: string;
   startDate: string;
@@ -30,156 +34,118 @@ export type PortalNotification = {
   href?: string;
 };
 
-export const SEED_OWNER_BOOKINGS: PortalBooking[] = [
+const william = DEMO_OWNERS[0];
+const kiplagat = DEMO_OWNERS[1];
+const rotich = DEMO_OWNERS[2];
+const gladys = DEMO_OWNERS[3];
+
+const whimsey = DEMO_RENTERS[0];
+const charles = DEMO_RENTERS[1];
+const reuben = DEMO_RENTERS[2];
+const owen = DEMO_RENTERS[3];
+
+/** Starter bookings between real demo renters and owners (seeded once). */
+export const SEED_NETWORK_BOOKINGS: PortalBooking[] = [
   {
-    id: "bk-001",
+    id: "bk-seed-001",
     equipmentId: "eq-solar-pump-turbo",
     equipmentTitle: "Solar Irrigation Pump",
-    ownerName: "You",
-    renterName: "Grace Jeptoo",
-    renterPhone: "0712 445 221",
-    startDate: "2026-07-18",
-    returnDate: "2026-07-21",
+    ownerId: william.id,
+    ownerName: william.fullName,
+    renterId: whimsey.id,
+    renterName: whimsey.fullName,
+    renterPhone: whimsey.phone,
+    startDate: "2026-07-30",
+    returnDate: "2026-08-02",
     ratePerDay: 500,
     totalKes: 1500,
     status: "pending",
     locationLabel: "Turbo, Uasin Gishu",
-    createdAt: "2026-07-17T08:00:00.000Z",
+    createdAt: "2026-07-29T08:00:00.000Z",
   },
   {
-    id: "bk-002",
+    id: "bk-seed-002",
     equipmentId: "eq-soil-kit-moiben",
     equipmentTitle: "Soil Testing Kit",
-    ownerName: "You",
-    renterName: "Peter Rono",
-    renterPhone: "0708 112 334",
-    startDate: "2026-07-10",
-    returnDate: "2026-07-12",
+    ownerId: kiplagat.id,
+    ownerName: kiplagat.fullName,
+    renterId: charles.id,
+    renterName: charles.fullName,
+    renterPhone: charles.phone,
+    startDate: "2026-07-20",
+    returnDate: "2026-07-22",
     ratePerDay: 250,
     totalKes: 500,
     status: "returned",
     locationLabel: "Moiben, Uasin Gishu",
-    createdAt: "2026-07-09T10:00:00.000Z",
+    createdAt: "2026-07-19T10:00:00.000Z",
   },
   {
-    id: "bk-003",
+    id: "bk-seed-003",
     equipmentId: "eq-tiller-kapseret",
     equipmentTitle: "Conservation Tiller",
-    ownerName: "You",
-    renterName: "Mary Chebet",
-    renterPhone: "0741 998 120",
-    startDate: "2026-07-15",
-    returnDate: "2026-07-19",
+    ownerId: rotich.id,
+    ownerName: rotich.fullName,
+    renterId: reuben.id,
+    renterName: reuben.fullName,
+    renterPhone: reuben.phone,
+    startDate: "2026-07-28",
+    returnDate: "2026-08-01",
     ratePerDay: 800,
     totalKes: 3200,
     status: "active",
     locationLabel: "Kapseret, Uasin Gishu",
-    createdAt: "2026-07-14T12:00:00.000Z",
+    createdAt: "2026-07-27T12:00:00.000Z",
+  },
+  {
+    id: "bk-seed-004",
+    equipmentId: "eq-drip-kesses",
+    equipmentTitle: "Drip Irrigation Starter Kit",
+    ownerId: gladys.id,
+    ownerName: gladys.fullName,
+    renterId: owen.id,
+    renterName: owen.fullName,
+    renterPhone: owen.phone,
+    startDate: "2026-07-25",
+    returnDate: "2026-07-29",
+    ratePerDay: 350,
+    totalKes: 1400,
+    status: "confirmed",
+    locationLabel: "Kesses, Uasin Gishu",
+    createdAt: "2026-07-24T09:30:00.000Z",
   },
 ];
 
+/** Income rows derived from completed rentals among the demo network. */
 export const SEED_INCOME_ROWS = [
   {
     id: "inc-1",
     tool: "Soil Testing Kit",
-    renter: "Peter Rono",
+    renter: charles.fullName,
+    ownerId: kiplagat.id,
     days: 2,
     amount: 500,
-    date: "2026-07-12",
+    date: "2026-07-22",
   },
   {
     id: "inc-2",
     tool: "Drip Irrigation Starter Kit",
-    renter: "Samuel Kiptoo",
+    renter: owen.fullName,
+    ownerId: gladys.id,
     days: 4,
     amount: 1400,
-    date: "2026-07-05",
+    date: "2026-07-12",
   },
   {
     id: "inc-3",
     tool: "Solar Irrigation Pump",
-    renter: "Helen Wanjiku",
+    renter: reuben.fullName,
+    ownerId: william.id,
     days: 3,
     amount: 1500,
-    date: "2026-06-28",
+    date: "2026-07-05",
   },
 ];
 
-export function seedNotificationsFor(role: string): PortalNotification[] {
-  if (role === "admin") {
-    return [
-      {
-        id: "n-a1",
-        title: "12 new users this week",
-        body: "Uasin Gishu signups are rising as more farmers join the portal.",
-        time: "2h ago",
-        read: false,
-        href: "/portal/admin/users",
-      },
-      {
-        id: "n-a2",
-        title: "3 listings need review",
-        body: "Check photos and rates before featuring them on Find tools.",
-        time: "Yesterday",
-        read: false,
-        href: "/portal/admin/listings",
-      },
-    ];
-  }
-
-  if (role === "owner" || role === "both") {
-    return [
-      {
-        id: "n-o1",
-        title: "New rental request",
-        body: "Grace Jeptoo wants your Solar Irrigation Pump (18–21 Jul).",
-        time: "35m ago",
-        read: false,
-        href: "/portal/rentals",
-      },
-      {
-        id: "n-o2",
-        title: "Return due soon",
-        body: "Mary Chebet should return the Conservation Tiller by 19 Jul.",
-        time: "Yesterday",
-        read: true,
-        href: "/portal/rentals",
-      },
-      {
-        id: "n-o3",
-        title: "Income recorded",
-        body: "KES 500 added from Soil Testing Kit rental.",
-        time: "3 days ago",
-        read: true,
-        href: "/portal/income",
-      },
-    ];
-  }
-
-  return [
-    {
-      id: "n-r1",
-      title: "Booking confirmed",
-      body: "Your Soil Testing Kit request was accepted. Open My bookings to track pickup.",
-      time: "1h ago",
-      read: false,
-      href: "/portal/bookings",
-    },
-    {
-      id: "n-r2",
-      title: "New tool near you",
-      body: "A Solar Irrigation Pump is available 8.2 km away in Turbo.",
-      time: "Yesterday",
-      read: false,
-      href: "/portal/find",
-    },
-    {
-      id: "n-r3",
-      title: "Return reminder",
-      body: "Remember to return rented tools on the agreed date.",
-      time: "4 days ago",
-      read: true,
-      href: "/portal/bookings",
-    },
-  ];
-}
+/** @deprecated Prefer live bookings from bookings-store. Kept for type imports. */
+export const SEED_OWNER_BOOKINGS = SEED_NETWORK_BOOKINGS;

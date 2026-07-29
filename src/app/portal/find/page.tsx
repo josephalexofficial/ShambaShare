@@ -79,8 +79,8 @@ export default function PortalFindPage() {
             Find tools
           </h1>
           <p className="mt-2 max-w-2xl text-ink-muted">
-            Nearby owner posts around {ELDORET_CENTER.label}, nearest first.
-            Pick a tool, set dates, and request to rent.
+            Tools from real ShambaShare owners around {ELDORET_CENTER.label},
+            nearest first. Request dates — the owner can approve in their portal.
           </p>
         </div>
         <p className="text-sm font-semibold text-green-800">
