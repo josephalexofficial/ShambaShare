@@ -11,6 +11,13 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { USER_ROLES, isSelfServiceRole, type UserRole } from "@/lib/constants";
 import {
+  ensureSuperAdminSeeded,
+  matchesSuperAdminCredentials,
+  resolveStaffRole,
+  SUPER_ADMIN,
+  isSuperAdminEmail,
+} from "@/lib/auth/admin";
+import {
   accountToSession,
   findLocalAccount,
   normalizeEmail,
@@ -72,6 +79,17 @@ function normalizeRole(value: unknown): UserRole | null {
     : null;
 }
 
+function withStaffRole(user: SessionUser): SessionUser {
+  return { ...user, role: resolveStaffRole(user.email, user.role) };
+}
+
+function establishSession(user: SessionUser) {
+  const next = withStaffRole(user);
+  resetPortalModeIfBoth(next);
+  writeLocalSession(next);
+  return next;
+}
+
 /**
  * Build a SessionUser from a Supabase auth user. Prefers a `profiles` row when
  * available, but falls back to the auth user's metadata so the app still works
@@ -97,23 +115,32 @@ async function toSupabaseSessionUser(user: User): Promise<SessionUser> {
     // profiles table may not exist yet — metadata fallback below.
   }
 
-  // Signup metadata is authoritative for the role; the profiles table is only a
-  // fallback (its column defaults to "both", so it must not win).
-  const role =
+  const rawRole =
     normalizeRole(metaString(user, "role")) ??
     normalizeRole(profile?.role) ??
     "both";
 
+  const email = user.email ?? "";
+  const role = resolveStaffRole(email, rawRole);
+
   return {
     id: user.id,
-    email: user.email ?? "",
+    email,
     fullName:
       profile?.full_name ||
       metaString(user, "full_name") ||
+      (isSuperAdminEmail(email) ? SUPER_ADMIN.fullName : null) ||
       user.email ||
       "ShambaShare user",
-    phone: profile?.phone || metaString(user, "phone") || "",
-    county: profile?.county || metaString(user, "county") || "Uasin Gishu",
+    phone:
+      profile?.phone ||
+      metaString(user, "phone") ||
+      (isSuperAdminEmail(email) ? SUPER_ADMIN.phone : "") ||
+      "",
+    county:
+      profile?.county ||
+      metaString(user, "county") ||
+      SUPER_ADMIN.county,
     role,
     source: "supabase",
   };
@@ -135,6 +162,74 @@ async function syncProfile(user: SessionUser) {
   }
 }
 
+async function syncAuthMetadata(user: SessionUser) {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    await supabase.auth.updateUser({
+      data: {
+        full_name: user.fullName,
+        phone: user.phone,
+        county: user.county,
+        role: user.role,
+      },
+    });
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Ensure the super-admin exists in Supabase so hosted login works with the
+ * known credentials even on a fresh deploy.
+ */
+async function provisionSuperAdminOnSupabase(
+  password: string,
+): Promise<SessionUser | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createBrowserSupabaseClient();
+  const email = SUPER_ADMIN.email;
+
+  const signedIn = await supabase.auth.signInWithPassword({ email, password });
+  if (!signedIn.error && signedIn.data.user) {
+    const su = await toSupabaseSessionUser(signedIn.data.user);
+    const adminUser = {
+      ...su,
+      role: "admin" as const,
+      fullName: SUPER_ADMIN.fullName,
+    };
+    await syncAuthMetadata(adminUser);
+    await syncProfile(adminUser);
+    return adminUser;
+  }
+
+  const signedUp = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: SUPER_ADMIN.fullName,
+        phone: SUPER_ADMIN.phone,
+        county: SUPER_ADMIN.county,
+        role: "admin",
+      },
+    },
+  });
+
+  if (!signedUp.error && signedUp.data.session?.user) {
+    const su = await toSupabaseSessionUser(signedUp.data.session.user);
+    const adminUser = {
+      ...su,
+      role: "admin" as const,
+      fullName: SUPER_ADMIN.fullName,
+    };
+    await syncProfile(adminUser);
+    return adminUser;
+  }
+
+  // Email confirmation may be on — local session still works for the demo.
+  return null;
+}
+
 function saveLocalAccountAndSession(input: {
   id: string;
   email: string;
@@ -145,6 +240,7 @@ function saveLocalAccountAndSession(input: {
   role: UserRole;
   source: SessionUser["source"];
 }) {
+  const role = resolveStaffRole(input.email, input.role);
   const account = upsertLocalAccount({
     id: input.id,
     email: input.email,
@@ -152,11 +248,9 @@ function saveLocalAccountAndSession(input: {
     fullName: input.fullName,
     phone: input.phone,
     county: input.county,
-    role: input.role,
+    role,
   });
-  const sessionUser = accountToSession(account, input.source);
-  writeLocalSession(sessionUser);
-  return sessionUser;
+  return establishSession(accountToSession(account, input.source));
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -165,10 +259,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    ensureSuperAdminSeeded();
 
     if (!isSupabaseConfigured()) {
       const local = readLocalSession();
-      if (local) setUser(local);
+      if (local) setUser(withStaffRole(local));
       setLoading(false);
       return;
     }
@@ -182,18 +277,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.session?.user) {
           const su = await toSupabaseSessionUser(data.session.user);
           if (!active) return;
-          setUser(su);
-          writeLocalSession(su);
+          setUser(establishSession(su));
         } else {
           const local = readLocalSession();
-          if (local) setUser(local);
+          if (local) setUser(withStaffRole(local));
         }
         if (active) setLoading(false);
       })
       .catch(() => {
         if (!active) return;
         const local = readLocalSession();
-        if (local) setUser(local);
+        if (local) setUser(withStaffRole(local));
         setLoading(false);
       });
 
@@ -201,8 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (session?.user) {
           const su = await toSupabaseSessionUser(session.user);
-          setUser(su);
-          writeLocalSession(su);
+          setUser(establishSession(su));
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           clearLocalSession();
@@ -217,8 +310,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (input: SignInInput) => {
+    ensureSuperAdminSeeded();
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
+
+    // Super-admin path: always works locally; also provisions on Supabase.
+    if (matchesSuperAdminCredentials(email, password)) {
+      if (isSupabaseConfigured()) {
+        try {
+          const provisioned = await provisionSuperAdminOnSupabase(password);
+          if (provisioned) {
+            upsertLocalAccount({
+              id: provisioned.id,
+              email,
+              password,
+              fullName: SUPER_ADMIN.fullName,
+              phone: SUPER_ADMIN.phone,
+              county: SUPER_ADMIN.county,
+              role: "admin",
+            });
+            const session = establishSession(provisioned);
+            setUser(session);
+            return { user: session };
+          }
+        } catch (error) {
+          console.warn("Super-admin Supabase provision failed:", error);
+        }
+      }
+
+      const local = verifyLocalAccount(email, password);
+      if (local) {
+        const session = establishSession(accountToSession(local, "local"));
+        setUser(session);
+        return { user: session };
+      }
+    }
 
     if (isSupabaseConfigured()) {
       try {
@@ -239,20 +365,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             county: su.county,
             role: su.role,
           });
-          resetPortalModeIfBoth(su);
-          setUser(su);
-          writeLocalSession(su);
-          return { user: su };
+          const session = establishSession(su);
+          setUser(session);
+          return { user: session };
         }
 
-        // Supabase rejected — try a local account created on this device.
         const local = verifyLocalAccount(email, password);
         if (local) {
-          const su = accountToSession(local, "local");
-          resetPortalModeIfBoth(su);
-          setUser(su);
-          writeLocalSession(su);
-          return { user: su };
+          const session = establishSession(accountToSession(local, "local"));
+          setUser(session);
+          return { user: session };
         }
 
         if (error && /email not confirmed/i.test(error.message)) {
@@ -269,11 +391,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const local = verifyLocalAccount(email, password);
     if (local) {
-      const su = accountToSession(local, "local");
-      resetPortalModeIfBoth(su);
-      setUser(su);
-      writeLocalSession(su);
-      return { user: su };
+      const session = establishSession(accountToSession(local, "local"));
+      setUser(session);
+      return { user: session };
     }
     if (findLocalAccount(email)) {
       return { error: "Wrong password for this email." };
@@ -290,7 +410,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fullName = input.fullName.trim();
       const phone = input.phone.trim();
       const county = input.county.trim() || "Uasin Gishu";
-      const role = input.role;
+
+      if (isSuperAdminEmail(email)) {
+        return {
+          error:
+            "This email is reserved for the platform admin. Please Sign in with the admin credentials.",
+        };
+      }
 
       if (!email || password.length < 6) {
         return {
@@ -298,6 +424,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "Enter a valid email and a password of at least 6 characters.",
         };
       }
+
+      const role = resolveStaffRole(email, input.role);
 
       if (isSupabaseConfigured()) {
         try {
@@ -312,14 +440,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (error) {
             if (/registered|already/i.test(error.message)) {
-              // Account exists — sign them in instead.
               return await signIn({ email, password });
             }
             return { error: error.message };
           }
 
           if (data.session?.user) {
-            // Build from the form so the chosen role is exact (no re-read races).
             const su: SessionUser = {
               id: data.session.user.id,
               email,
@@ -339,13 +465,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               county: su.county,
               role: su.role,
             });
-            resetPortalModeIfBoth(su);
-            setUser(su);
-            writeLocalSession(su);
-            return { user: su };
+            const session = establishSession(su);
+            setUser(session);
+            return { user: session };
           }
 
-          // No session returned => email confirmation is enabled.
           return {
             error:
               "Account created, but email confirmation is on. Confirm via the email we sent, then sign in. To allow instant login across devices, disable email confirmation in Supabase → Authentication → Providers → Email.",
@@ -355,8 +479,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Local-only fallback (Supabase not configured or unreachable).
-      const su = saveLocalAccountAndSession({
+      const session = saveLocalAccountAndSession({
         id: crypto.randomUUID(),
         email,
         password,
@@ -366,9 +489,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         source: "local",
       });
-      resetPortalModeIfBoth(su);
-      setUser(su);
-      return { user: su };
+      setUser(session);
+      return { user: session };
     },
     [signIn],
   );
@@ -393,14 +515,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       let nextRole = patch.role ?? current.role;
       if (patch.role !== undefined) {
-        if (current.role === "admin") {
-          nextRole = "admin";
+        // Staff roles are locked — only the super-admin / team tools change them.
+        if (current.role === "admin" || current.role === "subadmin") {
+          nextRole = current.role;
         } else if (!isSelfServiceRole(patch.role)) {
           nextRole = current.role;
         } else {
           nextRole = patch.role;
         }
       }
+
+      nextRole = resolveStaffRole(current.email, nextRole);
 
       const next: SessionUser = { ...current, ...patch, role: nextRole };
       writeLocalSession(next);
@@ -417,20 +542,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isSupabaseConfigured() && next.source === "supabase") {
-        try {
-          const supabase = createBrowserSupabaseClient();
-          void supabase.auth.updateUser({
-            data: {
-              full_name: next.fullName,
-              phone: next.phone,
-              county: next.county,
-              role: next.role,
-            },
-          });
-          void syncProfile(next);
-        } catch {
-          // ignore
-        }
+        void syncAuthMetadata(next);
+        void syncProfile(next);
       }
 
       return next;

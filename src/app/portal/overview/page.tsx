@@ -16,7 +16,7 @@ import { useNotifications } from "@/components/portal/NotificationsProvider";
 import { usePortalMode } from "@/components/portal/PortalModeProvider";
 import { StatCard } from "@/components/portal/StatCard";
 import { ButtonLink } from "@/components/ui/Button";
-import { canList, canRent, isAdmin } from "@/lib/constants";
+import { canList, canRent, isAdminStaff } from "@/lib/constants";
 import { SEED_EQUIPMENT } from "@/lib/seed-equipment";
 import { SEED_INCOME_ROWS, SEED_OWNER_BOOKINGS } from "@/lib/seed-portal";
 import { readBookings } from "@/lib/bookings-store";
@@ -33,7 +33,7 @@ export default function PortalOverviewPage() {
 
   if (!user) return null;
 
-  if (isAdmin(effectiveRole)) {
+  if (isAdminStaff(effectiveRole)) {
     return (
       <div className="space-y-8">
         <div>
@@ -45,17 +45,25 @@ export default function PortalOverviewPage() {
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Users" value="128" hint="Renters, owners & both" />
           <StatCard
             label="Live listings"
             value={String(SEED_EQUIPMENT.length)}
-            hint="Across Uasin Gishu"
+            hint="Demo catalogue"
+            href="/portal/admin/listings"
           />
-          <StatCard label="Active rentals" value="17" hint="In progress this week" />
-          <StatCard label="Portal alerts" value="64" hint="Requests handled this month" />
+          <StatCard
+            label="Unread alerts"
+            value={String(unreadCount)}
+            hint="Open Notifications"
+            icon={Bell}
+            href="/portal/notifications"
+          />
         </div>
         <div className="flex flex-wrap gap-3">
-          <ButtonLink href="/portal/admin/users">Manage users</ButtonLink>
+          <ButtonLink href="/portal/admin">Open admin home</ButtonLink>
+          <ButtonLink href="/portal/admin/users" variant="secondary">
+            Manage users
+          </ButtonLink>
           <ButtonLink href="/portal/admin/impact" variant="secondary">
             Impact snapshot
           </ButtonLink>

@@ -12,6 +12,7 @@ import {
   Users,
   Boxes,
   LineChart,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,7 +28,7 @@ export const PORTAL_NAV: PortalNavItem[] = [
     href: "/portal/overview",
     label: "Overview",
     icon: LayoutDashboard,
-    roles: ["renter", "owner", "both", "admin"],
+    roles: ["renter", "owner", "both", "admin", "subadmin"],
   },
   {
     href: "/portal/find",
@@ -63,37 +64,43 @@ export const PORTAL_NAV: PortalNavItem[] = [
     href: "/portal/admin",
     label: "Admin home",
     icon: Shield,
-    roles: ["admin"],
+    roles: ["admin", "subadmin"],
   },
   {
     href: "/portal/admin/users",
     label: "Users",
     icon: Users,
+    roles: ["admin", "subadmin"],
+  },
+  {
+    href: "/portal/admin/team",
+    label: "Admin team",
+    icon: UserCog,
     roles: ["admin"],
   },
   {
     href: "/portal/admin/listings",
     label: "All listings",
     icon: Boxes,
-    roles: ["admin"],
+    roles: ["admin", "subadmin"],
   },
   {
     href: "/portal/admin/impact",
     label: "Impact",
     icon: LineChart,
-    roles: ["admin"],
+    roles: ["admin", "subadmin"],
   },
   {
     href: "/portal/notifications",
     label: "Notifications",
     icon: Bell,
-    roles: ["renter", "owner", "both", "admin"],
+    roles: ["renter", "owner", "both", "admin", "subadmin"],
   },
   {
     href: "/portal/settings",
     label: "Settings",
     icon: Settings,
-    roles: ["renter", "owner", "both", "admin"],
+    roles: ["renter", "owner", "both", "admin", "subadmin"],
   },
 ];
 

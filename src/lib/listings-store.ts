@@ -66,3 +66,19 @@ export function toggleOwnerListingAvailability(id: string, ownerId: string) {
   writeOwnerListings(next);
   return next.filter((item) => item.ownerId === ownerId);
 }
+
+/** Admin moderation: pause/unpause any owner listing. */
+export function adminToggleListingAvailability(id: string) {
+  const next = readOwnerListings().map((item) =>
+    item.id === id ? { ...item, isAvailable: !item.isAvailable } : item,
+  );
+  writeOwnerListings(next);
+  return next;
+}
+
+/** Admin moderation: remove an owner-created listing. */
+export function adminRemoveListing(id: string) {
+  const next = readOwnerListings().filter((item) => item.id !== id);
+  writeOwnerListings(next);
+  return next;
+}

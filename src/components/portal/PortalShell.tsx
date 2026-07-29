@@ -21,6 +21,8 @@ import type { PortalMode } from "@/lib/portal-mode";
 import type { SessionUser } from "@/lib/auth/session";
 
 function roleLabel(role: UserRole) {
+  if (role === "both") return "Renter & Owner";
+  if (role === "subadmin") return "Sub-admin";
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 

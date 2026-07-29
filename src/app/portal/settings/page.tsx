@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import {
   SELF_SERVICE_ROLES,
   isAdmin,
+  isAdminStaff,
   isSelfServiceRole,
   type SelfServiceRole,
   type UserRole,
@@ -44,7 +45,8 @@ export default function PortalSettingsPage() {
 
   if (!user) return null;
 
-  const adminAccount = isAdmin(user.role);
+  const adminAccount = isAdminStaff(user.role);
+  const superAdminAccount = isAdmin(user.role);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -184,10 +186,13 @@ export default function PortalSettingsPage() {
                 <Shield size={20} />
               </span>
               <div>
-                <p className="font-semibold text-green-950">Administrator</p>
+                <p className="font-semibold text-green-950">
+                  {superAdminAccount ? "Super administrator" : "Sub-admin"}
+                </p>
                 <p className="mt-1 text-sm text-ink-muted">
-                  You manage users, listings, and impact. Role changes for admin
-                  accounts are handled by platform operators only.
+                  {superAdminAccount
+                    ? "You have full control — users, listings, impact, and the admin team. This role can’t be changed from Settings."
+                    : "You can manage users, listings, and impact. Staff roles are assigned by the super admin only."}
                 </p>
               </div>
             </div>

@@ -33,18 +33,26 @@ export const USER_ROLES = [
   {
     value: "admin",
     title: "I’m an Admin",
-    description: "Monitor users, listings, rentals, and platform impact.",
+    description: "Full platform control — users, listings, impact, and staff.",
+  },
+  {
+    value: "subadmin",
+    title: "I’m a Sub-admin",
+    description: "Help operate users, listings, and impact (assigned by admin).",
   },
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number]["value"];
 
-/** Roles members can choose themselves. Admin is assigned only by operators. */
-export const SELF_SERVICE_ROLES = USER_ROLES.filter(
-  (role) => role.value !== "admin",
-);
+export type SelfServiceRole = "renter" | "owner" | "both";
 
-export type SelfServiceRole = (typeof SELF_SERVICE_ROLES)[number]["value"];
+/** Roles members can choose themselves. Staff roles are assigned only by operators. */
+export const SELF_SERVICE_ROLES = USER_ROLES.filter(
+  (role): role is (typeof USER_ROLES)[number] & { value: SelfServiceRole } =>
+    role.value === "renter" ||
+    role.value === "owner" ||
+    role.value === "both",
+);
 
 export function isSelfServiceRole(role: string): role is SelfServiceRole {
   return SELF_SERVICE_ROLES.some((item) => item.value === role);
@@ -83,10 +91,17 @@ export function canList(role: UserRole | null | undefined) {
   return role === "owner" || role === "both";
 }
 
+/** Super admin only (full control, including the admin team). */
 export function isAdmin(role: UserRole | null | undefined) {
   return role === "admin";
 }
 
-export function postAuthPath(_role?: UserRole) {
+/** Anyone with staff access to the admin portal. */
+export function isAdminStaff(role: UserRole | null | undefined) {
+  return role === "admin" || role === "subadmin";
+}
+
+export function postAuthPath(role?: UserRole) {
+  if (isAdminStaff(role)) return "/portal/admin";
   return "/portal/overview";
 }

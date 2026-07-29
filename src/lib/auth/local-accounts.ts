@@ -57,6 +57,30 @@ export function verifyLocalAccount(
   return account;
 }
 
+export function listLocalAccounts(): LocalAccount[] {
+  return Object.values(readAll()).sort((a, b) =>
+    a.fullName.localeCompare(b.fullName),
+  );
+}
+
+export function deleteLocalAccount(email: string): boolean {
+  const key = normalizeEmail(email);
+  const map = readAll();
+  if (!(key in map)) return false;
+  delete map[key];
+  writeAll(map);
+  return true;
+}
+
+export function updateLocalAccountRole(
+  email: string,
+  role: UserRole,
+): LocalAccount | null {
+  const account = findLocalAccount(email);
+  if (!account) return null;
+  return upsertLocalAccount({ ...account, role });
+}
+
 export function accountToSession(
   account: LocalAccount,
   source: SessionUser["source"] = "local",
