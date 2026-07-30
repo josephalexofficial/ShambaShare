@@ -82,15 +82,17 @@ cp .env.example .env.local
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 Supabase is optional for local demos. Without it, accounts are stored in the browser (localStorage) so join → sign out → sign in still works on the same device.
 
-To use Supabase fully:
+To use Supabase fully (including **hosted** Join → Sign in on another phone/browser):
 1. Create a project at [supabase.com](https://supabase.com)
 2. Run `supabase/schema.sql` in the SQL editor
-3. Add the project URL and anon key to `.env.local`
-4. Restart `npm run dev`
+3. Add the project URL, anon key, and **service role** key to `.env.local` and Vercel
+4. In Supabase → Authentication → Providers → Email, turn **Confirm email** off for demos (or keep it on — the service role register API confirms users automatically)
+5. Restart `npm run dev` / redeploy
 
 > Never commit `.env.local`. It is gitignored.
 
@@ -119,9 +121,10 @@ Key routes:
 ## Demo notes
 
 - Seed equipment listings are centered around **Eldoret / Uasin Gishu**
+- Demo network password for seeded owners/renters: `Alex@123` (e.g. `alexjoseph@gmail.com` renter, `josephalex@gmail.com` owner)
 - Bookings and notification read-state persist in the browser for demos
 - After joining, you land in the **portal**, not the marketing site
-- Use the same browser/profile for join and later sign-in when using local auth
+- Hosted cross-device login needs `SUPABASE_SERVICE_ROLE_KEY` on Vercel so Join creates confirmed Auth users
 
 ---
 

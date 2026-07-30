@@ -200,6 +200,42 @@ async function syncAuthMetadata(user: SessionUser) {
   }
 }
 
+/** Create/repair a confirmed Auth user via service role (cross-device login). */
+async function registerConfirmedUser(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  county: string;
+  role: UserRole;
+}): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+    };
+    return Boolean(json.ok);
+  } catch {
+    return false;
+  }
+}
+
+async function confirmEmailIfNeeded(email: string, password: string) {
+  try {
+    await fetch("/api/auth/confirm-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    /* ignore — local session still works */
+  }
+}
+
 /**
  * Ensure the super-admin exists in Supabase so hosted login works with the
  * known credentials even on a fresh deploy.
@@ -211,7 +247,33 @@ async function provisionSuperAdminOnSupabase(
   const supabase = createBrowserSupabaseClient();
   const email = SUPER_ADMIN.email;
 
-  const signedIn = await supabase.auth.signInWithPassword({ email, password });
+  let signedIn = await supabase.auth.signInWithPassword({ email, password });
+  if (signedIn.error && /email not confirmed/i.test(signedIn.error.message)) {
+    await confirmEmailIfNeeded(email, password);
+    signedIn = await supabase.auth.signInWithPassword({ email, password });
+  }
+  if (!signedIn.error && signedIn.data.user) {
+    const su = await toSupabaseSessionUser(signedIn.data.user);
+    const adminUser = {
+      ...su,
+      role: "admin" as const,
+      fullName: SUPER_ADMIN.fullName,
+    };
+    await syncAuthMetadata(adminUser);
+    await syncProfile(adminUser);
+    return adminUser;
+  }
+
+  // Preferred: service-role create with email already confirmed.
+  await registerConfirmedUser({
+    email,
+    password,
+    fullName: SUPER_ADMIN.fullName,
+    phone: SUPER_ADMIN.phone,
+    county: SUPER_ADMIN.county,
+    role: "admin",
+  });
+  signedIn = await supabase.auth.signInWithPassword({ email, password });
   if (!signedIn.error && signedIn.data.user) {
     const su = await toSupabaseSessionUser(signedIn.data.user);
     const adminUser = {
@@ -248,7 +310,23 @@ async function provisionSuperAdminOnSupabase(
     return adminUser;
   }
 
-  // Email confirmation may be on — local session still works for the demo.
+  // Signup may have created an unconfirmed user — confirm and retry.
+  if (!signedUp.error) {
+    await confirmEmailIfNeeded(email, password);
+    const retry = await supabase.auth.signInWithPassword({ email, password });
+    if (!retry.error && retry.data.user) {
+      const su = await toSupabaseSessionUser(retry.data.user);
+      const adminUser = {
+        ...su,
+        role: "admin" as const,
+        fullName: SUPER_ADMIN.fullName,
+      };
+      await syncProfile(adminUser);
+      return adminUser;
+    }
+  }
+
+  // Email confirmation may be on without service role — local session still works.
   return null;
 }
 
@@ -260,10 +338,17 @@ async function provisionDemoUserOnSupabase(
   if (!isSupabaseConfigured()) return null;
   const supabase = createBrowserSupabaseClient();
 
-  const signedIn = await supabase.auth.signInWithPassword({
+  let signedIn = await supabase.auth.signInWithPassword({
     email: demo.email,
     password,
   });
+  if (signedIn.error && /email not confirmed/i.test(signedIn.error.message)) {
+    await confirmEmailIfNeeded(demo.email, password);
+    signedIn = await supabase.auth.signInWithPassword({
+      email: demo.email,
+      password,
+    });
+  }
   if (!signedIn.error && signedIn.data.user) {
     const su = await toSupabaseSessionUser(signedIn.data.user);
     return {
@@ -273,6 +358,32 @@ async function provisionDemoUserOnSupabase(
       county: demo.county,
       role: demo.role,
     };
+  }
+
+  // Create/repair with email confirmed so Join-style hosted login never fails.
+  await registerConfirmedUser({
+    email: demo.email,
+    password,
+    fullName: demo.fullName,
+    phone: demo.phone,
+    county: demo.county,
+    role: demo.role,
+  });
+  signedIn = await supabase.auth.signInWithPassword({
+    email: demo.email,
+    password,
+  });
+  if (!signedIn.error && signedIn.data.user) {
+    const su = await toSupabaseSessionUser(signedIn.data.user);
+    const next = {
+      ...su,
+      fullName: demo.fullName,
+      phone: demo.phone,
+      county: demo.county,
+      role: demo.role,
+    };
+    await syncProfile(next);
+    return next;
   }
 
   const signedUp = await supabase.auth.signUp({
@@ -299,6 +410,26 @@ async function provisionDemoUserOnSupabase(
     };
     await syncProfile(next);
     return next;
+  }
+
+  if (!signedUp.error) {
+    await confirmEmailIfNeeded(demo.email, password);
+    const retry = await supabase.auth.signInWithPassword({
+      email: demo.email,
+      password,
+    });
+    if (!retry.error && retry.data.user) {
+      const su = await toSupabaseSessionUser(retry.data.user);
+      const next = {
+        ...su,
+        fullName: demo.fullName,
+        phone: demo.phone,
+        county: demo.county,
+        role: demo.role,
+      };
+      await syncProfile(next);
+      return next;
+    }
   }
 
   return null;
@@ -466,10 +597,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured()) {
       try {
         const supabase = createBrowserSupabaseClient();
-        const { data, error } = await supabase.auth.signInWithPassword({
+        let { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+
+        // Unconfirmed email from an older Join — confirm via service role, retry.
+        if (error && /email not confirmed/i.test(error.message)) {
+          await fetch("/api/auth/confirm-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          }).catch(() => null);
+          const retry = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          data = retry.data;
+          error = retry.error;
+        }
 
         if (!error && data.user) {
           const su = await toSupabaseSessionUser(data.user);
@@ -497,7 +643,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error && /email not confirmed/i.test(error.message)) {
           return {
             error:
-              "Please confirm your email first (check your inbox), then sign in.",
+              "This account still needs email confirmation. Ask the admin to add SUPABASE_SERVICE_ROLE_KEY on Vercel, or turn off Confirm email in Supabase Auth settings.",
           };
         }
         return { error: "Invalid email or password." };
@@ -543,9 +689,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const role = resolveStaffRole(email, input.role);
+      // Always mirror locally first so this device can never lose the account.
+      const localId = findLocalAccount(email)?.id ?? crypto.randomUUID();
+      upsertLocalAccount({
+        id: localId,
+        email,
+        password,
+        fullName,
+        phone,
+        county,
+        role,
+      });
 
       if (isSupabaseConfigured()) {
         try {
+          // Preferred path: server creates a confirmed user (works across devices).
+          const registerRes = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              password,
+              fullName,
+              phone,
+              county,
+              role,
+            }),
+          });
+          const registerJson = (await registerRes.json().catch(() => ({}))) as {
+            ok?: boolean;
+            skipped?: boolean;
+            error?: string;
+            userId?: string;
+          };
+
+          if (registerJson.ok) {
+            const signedIn = await signIn({ email, password });
+            if (signedIn.user) return signedIn;
+          }
+
+          if (registerJson.error && !registerJson.skipped) {
+            // Fall through to client signup / local session.
+            console.warn("Register API:", registerJson.error);
+          }
+
           const supabase = createBrowserSupabaseClient();
           const { data, error } = await supabase.auth.signUp({
             email,
@@ -557,9 +744,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (error) {
             if (/registered|already/i.test(error.message)) {
+              // Repair unconfirmed accounts, then sign in.
+              await fetch("/api/auth/confirm-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+              }).catch(() => null);
               return await signIn({ email, password });
             }
-            return { error: error.message };
+            // Keep local session so the member is not locked out on this device.
+            const localSession = saveLocalAccountAndSession({
+              id: localId,
+              email,
+              password,
+              fullName,
+              phone,
+              county,
+              role,
+              source: "local",
+            });
+            setUser(localSession);
+            return { user: localSession };
           }
 
           if (data.session?.user) {
@@ -587,17 +792,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { user: session };
           }
 
-          return {
-            error:
-              "Account created, but email confirmation is on. Confirm via the email we sent, then sign in. To allow instant login across devices, disable email confirmation in Supabase → Authentication → Providers → Email.",
-          };
+          // Email confirmation required — try server confirm, then sign in.
+          await fetch("/api/auth/confirm-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          }).catch(() => null);
+
+          const afterConfirm = await signIn({ email, password });
+          if (afterConfirm.user) return afterConfirm;
+
+          const localSession = saveLocalAccountAndSession({
+            id: localId,
+            email,
+            password,
+            fullName,
+            phone,
+            county,
+            role,
+            source: "local",
+          });
+          setUser(localSession);
+          return { user: localSession };
         } catch (error) {
           console.warn("Supabase signup failed, using local account:", error);
         }
       }
 
       const session = saveLocalAccountAndSession({
-        id: crypto.randomUUID(),
+        id: localId,
         email,
         password,
         fullName,

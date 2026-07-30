@@ -1,4 +1,4 @@
-import { DEMO_OWNERS, DEMO_RENTERS } from "@/lib/auth/seed-users";
+import { DEMO_RENTERS, getDemoUserByEmail } from "@/lib/auth/seed-users";
 
 export type BookingStatus =
   | "pending"
@@ -34,10 +34,10 @@ export type PortalNotification = {
   href?: string;
 };
 
-const william = DEMO_OWNERS[0];
-const kiplagat = DEMO_OWNERS[1];
-const rotich = DEMO_OWNERS[2];
-const gladys = DEMO_OWNERS[3];
+const william = getDemoUserByEmail("william@gmail.com")!;
+const kiplagat = getDemoUserByEmail("kiplagat@gmail.com")!;
+const rotich = getDemoUserByEmail("rotich@gmail.com")!;
+const gladys = getDemoUserByEmail("gladys@gmail.com")!;
 
 const whimsey = DEMO_RENTERS[0];
 const charles = DEMO_RENTERS[1];

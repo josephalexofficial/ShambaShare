@@ -1,5 +1,5 @@
 import type { EquipmentCategory } from "@/lib/constants";
-import { DEMO_OWNERS } from "@/lib/auth/seed-users";
+import { getDemoUserByEmail } from "@/lib/auth/seed-users";
 
 export type SeedEquipment = {
   id: string;
@@ -16,10 +16,11 @@ export type SeedEquipment = {
   isAvailable: boolean;
 };
 
-const william = DEMO_OWNERS[0];
-const kiplagat = DEMO_OWNERS[1];
-const rotich = DEMO_OWNERS[2];
-const gladys = DEMO_OWNERS[3];
+const william = getDemoUserByEmail("william@gmail.com")!;
+const kiplagat = getDemoUserByEmail("kiplagat@gmail.com")!;
+const rotich = getDemoUserByEmail("rotich@gmail.com")!;
+const gladys = getDemoUserByEmail("gladys@gmail.com")!;
+const alex = getDemoUserByEmail("josephalex@gmail.com")!;
 
 /**
  * Catalogue tied to real demo owners so Find tools, bookings, and notifications
@@ -118,9 +119,9 @@ export const SEED_EQUIPMENT: SeedEquipment[] = [
     locationLng: 35.53,
     imageUrl:
       "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80",
-    ownerName: gladys.fullName,
-    ownerId: gladys.id,
-    isAvailable: false,
+    ownerName: alex.fullName,
+    ownerId: alex.id,
+    isAvailable: true,
   },
 ];
 

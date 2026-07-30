@@ -21,6 +21,16 @@ export const DEMO_NETWORK_PASSWORD = "Alex@123";
  */
 export const DEMO_OWNERS: SeedDemoUser[] = [
   {
+    id: "user-josephalex",
+    email: "josephalex@gmail.com",
+    password: DEMO_NETWORK_PASSWORD,
+    fullName: "Alex Joseph",
+    phone: "0769 591 223",
+    county: "Uasin Gishu",
+    role: "owner",
+    area: "Eldoret",
+  },
+  {
     id: "user-william",
     email: "william@gmail.com",
     password: DEMO_NETWORK_PASSWORD,
@@ -63,6 +73,16 @@ export const DEMO_OWNERS: SeedDemoUser[] = [
 ];
 
 export const DEMO_RENTERS: SeedDemoUser[] = [
+  {
+    id: "user-alexjoseph",
+    email: "alexjoseph@gmail.com",
+    password: DEMO_NETWORK_PASSWORD,
+    fullName: "Alex Joseph",
+    phone: "0769 591 223",
+    county: "Uasin Gishu",
+    role: "renter",
+    area: "Eldoret",
+  },
   {
     id: "user-whimsey",
     email: "whimsey@gmail.com",
